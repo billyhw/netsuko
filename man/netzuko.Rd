@@ -7,8 +7,8 @@
 netzuko(
   x_train,
   y_train,
-  x_test,
-  y_test,
+  x_test = NULL,
+  y_test = NULL,
   num_hidden = c(2, 2),
   iter = 10000,
   step_size = 0.01,
@@ -71,4 +71,6 @@ y_test = factor(rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,1])
 fit = netzuko(x_train, y_train, x_test, y_test, num_hidden = c(3, 3), step_size = 0.01, iter = 200)
 plot(fit$cost_train, type = "l")
 lines(fit$cost_test, col = 2)
+fit_2 = netzuko(x_train, y_train, iter = 200)
+plot(fit_2$cost_train, type = "l")
 }

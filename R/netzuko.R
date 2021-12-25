@@ -157,28 +157,41 @@ forward_backward_pass = function(x, y, w) {
 #'fit = netzuko(x_train, y_train, x_test, y_test, num_hidden = c(3, 3), step_size = 0.01, iter = 200)
 #'plot(fit$cost_train, type = "l")
 #'lines(fit$cost_test, col = 2)
+#'fit_2 = netzuko(x_train, y_train, iter = 200)
+#'plot(fit_2$cost_train, type = "l")
 #' @export
-netzuko = function(x_train, y_train, x_test, y_test, num_hidden = c(2, 2),
+netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = c(2, 2),
                           iter = 10000, step_size = 0.01, lambda = 1e-5, momentum = 0.9,
                           ini_w = NULL, sparse = FALSE, verbose = F) {
 
+  if ((!is.null(x_test) & is.null(y_test)) | (is.null(x_test) & !is.null(y_test))) {
+    stop("x_test and y_test must either be both provided or both NULL")
+  }
+
   num_p = ncol(x_train)
   x_train = cbind(rep(1, nrow(x_train)), x_train)
-  x_test = cbind(rep(1, nrow(x_test)), x_test)
   y_train = model.matrix(~ y_train - 1)
-  y_test = model.matrix(~ y_test - 1)
-  cost_train = cost_test = rep(NA, iter)
+  cost_train = rep(NA, iter)
+  cost_test = NULL
+
+  if (!is.null(x_test) & !is.null(y_test)) {
+    x_test = cbind(rep(1, nrow(x_test)), x_test)
+    y_test = model.matrix(~ y_test - 1)
+    cost_test = rep(NA, iter)
+  }
 
   if (sparse) {
     require(Matrix)
     x_train = Matrix(x_train)
-    x_test = Matrix(x_test)
     y_train = Matrix(y_train)
-    y_test = Matrix(y_test)
+    if (!is.null(x_test) & !is.null(y_test)) {
+      x_test = Matrix(x_test)
+      y_test = Matrix(y_test)
+    }
   }
 
   if (is.null(ini_w)) {
-    num_hidden = c(num_p, num_hidden, ncol(y_test))
+    num_hidden = c(num_p, num_hidden, ncol(y_train))
     w = vector("list", length(num_hidden) - 1)
     for (i in 1:(length(num_hidden) - 1)) {
       w[[i]] = matrix(rnorm((num_hidden[i] + 1)*num_hidden[i+1], sd = 0.1), num_hidden[i] + 1, num_hidden[i+1])
@@ -189,9 +202,16 @@ netzuko = function(x_train, y_train, x_test, y_test, num_hidden = c(2, 2),
   penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
   cost_train[1] = cross_entropy(fb_train$p, y_train) + penalty
 
-  fb_test = forward_backward_pass(x_test, y_test, w)
-  cost_test[1] = cross_entropy(fb_test$p, y_test)
-  if (verbose) message("iter = 1, training cost = ", round(cost_train[1], 6), " test cost = ", round(cost_test[1], 6))
+  if (!is.null(x_test) & !is.null(y_test)) {
+    fb_test = forward_backward_pass(x_test, y_test, w)
+    cost_test[1] = cross_entropy(fb_test$p, y_test)
+  }
+
+  if (verbose) {
+    if (!is.null(x_test) & !is.null(y_test)) message("iter = 1, training cost = ", round(cost_train[1], 6),
+                                                     " test cost = ", round(cost_test[1], 6))
+    else message("iter = 1, training cost = ", round(cost_train[1], 6))
+  }
 
   g_w = vector("list", length(w))
 
@@ -212,10 +232,16 @@ netzuko = function(x_train, y_train, x_test, y_test, num_hidden = c(2, 2),
     penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
     cost_train[i] = cross_entropy(fb_train$p, y_train) + penalty
 
-    fb_test = forward_backward_pass(x_test, y_test, w)
-    cost_test[i] = cross_entropy(fb_test$p, y_test)
-    if (verbose) message("iter = ", i, " training cost = ", round(cost_train[i], 6), " test cost = ", round(cost_test[i], 6))
+    if (!is.null(x_test) & !is.null(y_test)) {
+      fb_test = forward_backward_pass(x_test, y_test, w)
+      cost_test[i] = cross_entropy(fb_test$p, y_test)
+    }
 
+    if (verbose) {
+      if (!is.null(x_test) & !is.null(y_test)) message("iter = ", i, " training cost = ", round(cost_train[i], 6),
+                                                       " test cost = ", round(cost_test[i], 6))
+      else message("iter = ", i, " training cost = ", round(cost_train[i], 6))
+    }
   }
 
   return(ls = list(cost_train = cost_train, cost_test = cost_test, w = w))
