@@ -11,7 +11,7 @@ netzuko(
   y_test,
   num_hidden = c(3, 3),
   iter = 10000,
-  step_size = 0.5,
+  step_size = 0.01,
   lambda = 1e-05,
   momentum = 0.9,
   ini_w = NULL,
@@ -68,7 +68,7 @@ y_train = factor(rbinom(100, 1, prob = logistic(alpha = 0, beta = 1, x_train[,1]
 x_test = matrix(rnorm(3000), 1000, 3)
 y_test = factor(rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,1])) +
                  rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,2])))
-fit = netzuko(x_train, y_train, x_test, y_test, step_size = 0.1, iter = 200)
+fit = netzuko(x_train, y_train, x_test, y_test, step_size = 0.01, iter = 200)
 plot(fit$cost_train, type = "l")
 lines(fit$cost_test, col = 2)
 }

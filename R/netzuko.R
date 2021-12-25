@@ -154,12 +154,12 @@ forward_backward_pass = function(x, y, w) {
 #'x_test = matrix(rnorm(3000), 1000, 3)
 #'y_test = factor(rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,1])) +
 #'                  rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,2])))
-#'fit = netzuko(x_train, y_train, x_test, y_test, step_size = 0.1, iter = 200)
+#'fit = netzuko(x_train, y_train, x_test, y_test, step_size = 0.01, iter = 200)
 #'plot(fit$cost_train, type = "l")
 #'lines(fit$cost_test, col = 2)
 #' @export
 netzuko = function(x_train, y_train, x_test, y_test, num_hidden = c(3, 3),
-                          iter = 10000, step_size = 0.5, lambda = 1e-5, momentum = 0.9,
+                          iter = 10000, step_size = 0.01, lambda = 1e-5, momentum = 0.9,
                           ini_w = NULL, sparse = FALSE, verbose = F) {
 
   num_p = ncol(x_train)
@@ -205,9 +205,9 @@ netzuko = function(x_train, y_train, x_test, y_test, num_hidden = c(3, 3),
       pen_w = lambda * w[[j]]
       pen_w[1, ] = 0
 
-      g_w[[j]] = momentum*g_w[[j]] + (1 - momentum) * (grad_w(fb_train$delta[[j]], fb_train$z[[j]]) + pen_w)
+      g_w[[j]] = momentum*g_w[[j]] - step_size * (grad_w(fb_train$delta[[j]], fb_train$z[[j]]) + pen_w)
 
-      w[[j]] = w[[j]] - step_size * g_w[[j]]
+      w[[j]] = w[[j]] + g_w[[j]]
     }
 
     fb_train = forward_backward_pass(x_train, y_train, w)
