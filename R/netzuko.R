@@ -195,9 +195,7 @@ netzuko = function(x_train, y_train, x_test, y_test, num_hidden = c(2, 2),
 
   g_w = vector("list", length(w))
 
-  for (j in 1:length(w)) {
-    g_w[[j]] = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
-  }
+  for (j in 1:length(w)) g_w[[j]] = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
 
   for (i in 2:iter) {
 
