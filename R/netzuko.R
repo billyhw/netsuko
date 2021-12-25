@@ -154,11 +154,11 @@ forward_backward_pass = function(x, y, w) {
 #'x_test = matrix(rnorm(3000), 1000, 3)
 #'y_test = factor(rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,1])) +
 #'                  rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,2])))
-#'fit = netzuko(x_train, y_train, x_test, y_test, step_size = 0.01, iter = 200)
+#'fit = netzuko(x_train, y_train, x_test, y_test, num_hidden = c(3, 3), step_size = 0.01, iter = 200)
 #'plot(fit$cost_train, type = "l")
 #'lines(fit$cost_test, col = 2)
 #' @export
-netzuko = function(x_train, y_train, x_test, y_test, num_hidden = c(3, 3),
+netzuko = function(x_train, y_train, x_test, y_test, num_hidden = c(2, 2),
                           iter = 10000, step_size = 0.01, lambda = 1e-5, momentum = 0.9,
                           ini_w = NULL, sparse = FALSE, verbose = F) {
 
