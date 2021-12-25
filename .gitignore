@@ -1,0 +1,5 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+netzuko.Rproj
+.Rbuildignore
+.Rproj.user
