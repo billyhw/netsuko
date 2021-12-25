@@ -4,3 +4,4 @@ netzuko.Rproj
 .Rbuildignore
 .Rproj.user
 .DS_Store
+.Rhistory
