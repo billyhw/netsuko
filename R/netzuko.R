@@ -84,11 +84,6 @@ grad_w = function(delta, x) -crossprod(x, delta)/nrow(x)
 #' @export
 forward_backward_pass = function(x, y, w) {
 
-  # w is a list of weights, from inputs to outputs through the layers
-  # length of w is number of hidden units + 1 (for the output layer)
-  # z_list stores the inputs, 1st layer hidden, 2nd layer hidden, etc.
-  # s_list stores the corresponding linear predictors
-
   s_list = vector("list", length(w) - 1)
   z_list = vector("list", length(w))
 
@@ -222,7 +217,6 @@ netzuko = function(x_train, y_train, x_test, y_test, num_hidden = c(3, 3),
     fb_test = forward_backward_pass(x_test, y_test, w)
     cost_test[i] = cross_entropy(fb_test$p, y_test)
     if (verbose) message("iter = ", i, " training cost = ", round(cost_train[i], 6), " test cost = ", round(cost_test[i], 6))
-
 
   }
 
