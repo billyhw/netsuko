@@ -161,7 +161,7 @@ forward_backward_pass = function(x, y, w) {
 #'plot(fit_2$cost_train, type = "l")
 #' @export
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = c(2, 2),
-                          iter = 10000, step_size = 0.01, lambda = 1e-5, momentum = 0.9,
+                          iter = 300, step_size = 0.01, lambda = 1e-5, momentum = 0.9,
                           ini_w = NULL, sparse = FALSE, verbose = F) {
 
   if ((!is.null(x_test) & is.null(y_test)) | (is.null(x_test) & !is.null(y_test))) {
