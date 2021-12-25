@@ -1,0 +1,24 @@
+{
+    "id": "DA71C141",
+    "path": "~/COVID_19/optimization/gradient_descent.Rmd",
+    "project_path": null,
+    "type": "r_markdown",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1640433683562.0,
+    "source_on_save": false,
+    "relative_order": 4,
+    "properties": {
+        "cursorPosition": "1684,0",
+        "scrollLine": "1672"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1640431895,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1640431895,
+    "read_only": false,
+    "read_only_alternatives": []
+}
