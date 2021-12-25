@@ -190,11 +190,6 @@ netzuko = function(x_train, y_train, x_test, y_test, num_hidden = c(3, 3),
     }
   }
 
-  # if (is.null(ini_beta)) beta = matrix(rnorm((num_hidden + 1)*ncol(y_test), sd = 0.01), num_hidden + 1, ncol(y_test))
-  # else beta = ini_beta
-  # if (is.null(ini_w)) w = matrix(rnorm(ncol(x_train)*num_hidden, sd = 0.01), ncol(x_train), num_hidden)
-  # else w = ini_w
-
   fb_train = forward_backward_pass(x_train, y_train, w)
   penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
   cost_train[1] = cross_entropy(fb_train$p, y_train) + penalty
