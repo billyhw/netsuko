@@ -4,7 +4,6 @@
 #' @param w The weights
 #' @return The linear predictors
 #' @note For Internal Use
-#' @export
 get_s = function(x, w) x %*% w
 
 #' Compute the soft max activation for output predictive probabilities
@@ -12,7 +11,6 @@ get_s = function(x, w) x %*% w
 #'
 #' @return The output probabilities
 #' @note For Internal Use
-#' @export
 soft_max = function(a) exp(a)/rowSums(exp(a))
 
 #' Compute logistic activation given linear predictors
@@ -20,7 +18,6 @@ soft_max = function(a) exp(a)/rowSums(exp(a))
 #' @param s The linear predictors
 #' @return The unit activations
 #' @note For Internal Use
-#' @export
 logistic_activation = function(s) 1/(1 + exp(-s))
 
 #' Compute tanh activation given linear predictors
@@ -28,7 +25,6 @@ logistic_activation = function(s) 1/(1 + exp(-s))
 #' @param s The linear predictors
 #' @return The unit activations
 #' @note For Internal Use
-#' @export
 tanh_activation = function(s) tanh(s)
 
 #' Compute errors from output to the last hidden layer
@@ -37,7 +33,6 @@ tanh_activation = function(s) tanh(s)
 #' @param p The predictions
 #' @return The error term (a.k.a delta) from the output to the last hidden layer
 #' @note For Internal Use
-#' @export
 get_error_output = function(y, p) y - p
 
 #' Compute errors from a layer to the previous layer
@@ -47,7 +42,6 @@ get_error_output = function(y, p) y - p
 #' @param The weights associated with the current layer
 #' @return The error term to be back-propagated
 #' @note For Internal use
-#' @export
 get_error_hidden = function(delta, grad_s, w) {
   if (nrow(w) > 2) grad_s * tcrossprod(delta, w[-1,])
   else grad_s * (delta %*% w[-1,])
@@ -58,7 +52,6 @@ get_error_hidden = function(delta, grad_s, w) {
 #' @param s The linear predictors
 #' @return The gradient of logistic activation evaluated at s
 #' @note For Internal Use
-#' @export
 grad_logistic = function(s) logistic_activation(s)*(1-logistic_activation(s))
 
 #' Compute the gradient of the tanh activation function
@@ -66,7 +59,6 @@ grad_logistic = function(s) logistic_activation(s)*(1-logistic_activation(s))
 #' @param s The linear predictors
 #' @return The gradient of logistic activation evaluated at s
 #' @note For Internal Use
-#' @export
 grad_tanh = function(s) 1-tanh_activation(s)
 
 #' Compute the negative cross-entropy for multi-class classification
@@ -75,7 +67,6 @@ grad_tanh = function(s) 1-tanh_activation(s)
 #' @param p The predictions
 #' @return The negative cross-entropy
 #' @note For Internal Use
-#' @export
 cross_entropy = function(p, y) -mean(rowSums(y*log(p)))
 
 #' Compute the gradient of the weight for a given layer
@@ -84,7 +75,6 @@ cross_entropy = function(p, y) -mean(rowSums(y*log(p)))
 #' @param x The inputs or the current hidden units
 #' @return The gradient of the weights for gradient descent update
 #' @note For Internal Use
-#' @export
 grad_w = function(delta, x) -crossprod(x, delta)/nrow(x)
 
 #' Compute crucial quantities evaluated from one forward-Backward pass through the neural network
@@ -97,7 +87,6 @@ grad_w = function(delta, x) -crossprod(x, delta)/nrow(x)
 #' p: the output probabilities
 #' delta: a list of errors backpropagated throught the layers
 #' z: the hidden units values
-#' @export
 forward_backward_pass = function(x, y, w, activation = "logistic") {
 
   if (activation == "logistic") {
