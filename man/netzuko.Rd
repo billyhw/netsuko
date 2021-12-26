@@ -11,7 +11,7 @@ netzuko(
   y_test = NULL,
   num_hidden = c(2, 2),
   iter = 300,
-  activation = "tanh",
+  activation = c("tanh", "logistic"),
   step_size = 0.01,
   lambda = 1e-05,
   momentum = 0.9,

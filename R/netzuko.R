@@ -87,17 +87,17 @@ grad_w = function(delta, x) -crossprod(x, delta)/nrow(x)
 #' p: the output probabilities
 #' delta: a list of errors backpropagated throught the layers
 #' z: the hidden units values
-forward_backward_pass = function(x, y, w, activation = "logistic") {
+forward_backward_pass = function(x, y, w, activation) {
 
   if (activation == "logistic") {
     activation_func = logistic_activation
     grad_func = grad_logistic
   }
-  else if (activation == "tanh") {
+
+  if (activation == "tanh") {
     activation_func = tanh_activation
     grad_func = grad_tanh
   }
-  else error("activation must be one of logistic or tanh~~~")
 
   s_list = vector("list", length(w) - 1)
   z_list = vector("list", length(w))
@@ -179,8 +179,10 @@ forward_backward_pass = function(x, y, w, activation = "logistic") {
 #'lines(fit$cost_test, col = 2)
 #' @export
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = c(2, 2),
-                   iter = 300, activation = "tanh", step_size = 0.01,
+                   iter = 300, activation = c("tanh", "logistic"), step_size = 0.01,
                    lambda = 1e-5, momentum = 0.9, ini_w = NULL, sparse = FALSE, verbose = F) {
+
+  activation = match.arg(activation)
 
   if ((!is.null(x_test) & is.null(y_test)) | (is.null(x_test) & !is.null(y_test))) {
     stop("x_test and y_test must either be both provided or both NULL")
