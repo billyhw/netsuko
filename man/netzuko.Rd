@@ -11,6 +11,7 @@ netzuko(
   y_test = NULL,
   num_hidden = c(2, 2),
   iter = 300,
+  activation = "tanh",
   step_size = 0.01,
   lambda = 1e-05,
   momentum = 0.9,
@@ -73,4 +74,7 @@ plot(fit$cost_train, type = "l")
 lines(fit$cost_test, col = 2)
 fit_2 = netzuko(x_train, y_train, iter = 200)
 plot(fit_2$cost_train, type = "l")
+fit_3 = netzuko(x_train, y_train, x_test, y_test, iter = 200, activation = "logistic")
+plot(fit_3$cost_train, type = "l")
+lines(fit$cost_test, col = 2)
 }

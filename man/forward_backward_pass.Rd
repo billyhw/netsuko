@@ -4,7 +4,7 @@
 \alias{forward_backward_pass}
 \title{Compute crucial quantities evaluated from one forward-Backward pass through the neural network}
 \usage{
-forward_backward_pass(x, y, w)
+forward_backward_pass(x, y, w, activation = "logistic")
 }
 \arguments{
 \item{x}{The inputs}

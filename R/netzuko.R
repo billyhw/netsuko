@@ -23,6 +23,14 @@ soft_max = function(a) exp(a)/rowSums(exp(a))
 #' @export
 logistic_activation = function(s) 1/(1 + exp(-s))
 
+#' Compute tanh activation given linear predictors
+#'
+#' @param s The linear predictors
+#' @return The unit activations
+#' @note For Internal Use
+#' @export
+tanh_activation = function(s) tanh(s)
+
 #' Compute errors from output to the last hidden layer
 #'
 #' @param y The outputs
@@ -53,6 +61,14 @@ get_error_hidden = function(delta, grad_s, w) {
 #' @export
 grad_logistic = function(s) logistic_activation(s)*(1-logistic_activation(s))
 
+#' Compute the gradient of the tanh activation function
+#'
+#' @param s The linear predictors
+#' @return The gradient of logistic activation evaluated at s
+#' @note For Internal Use
+#' @export
+grad_tanh = function(s) 1-tanh_activation(s)
+
 #' Compute the negative cross-entropy for multi-class classification
 #'
 #' @param y The outputs
@@ -82,7 +98,17 @@ grad_w = function(delta, x) -crossprod(x, delta)/nrow(x)
 #' delta: a list of errors backpropagated throught the layers
 #' z: the hidden units values
 #' @export
-forward_backward_pass = function(x, y, w) {
+forward_backward_pass = function(x, y, w, activation = "logistic") {
+
+  if (activation == "logistic") {
+    activation_func = logistic_activation
+    grad_func = grad_logistic
+  }
+  else if (activation == "tanh") {
+    activation_func = tanh_activation
+    grad_func = grad_tanh
+  }
+  else error("activation must be one of logistic or tanh~~~")
 
   s_list = vector("list", length(w) - 1)
   z_list = vector("list", length(w))
@@ -93,7 +119,7 @@ forward_backward_pass = function(x, y, w) {
 
   for (i in 2:length(z_list)) {
     s_list[[i-1]] = get_s(z_list[[i-1]], w[[i-1]])
-    z_list[[i]] = cbind(rep(1, nrow(x)), logistic_activation(s_list[[i-1]]))
+    z_list[[i]] = cbind(rep(1, nrow(x)), activation_func(s_list[[i-1]]))
   }
 
   # compute the output units
@@ -113,7 +139,7 @@ forward_backward_pass = function(x, y, w) {
   # compute the errors from the hidden-input layer propagating backwards
 
   for (i in (length(w) - 1):1) {
-    grad_s = grad_logistic(s_list[[i]])
+    grad_s = grad_func(s_list[[i]])
     delta_list[[i]] = get_error_hidden(delta_list[[i+1]], grad_s, w[[i+1]])
   }
 
@@ -159,10 +185,13 @@ forward_backward_pass = function(x, y, w) {
 #'lines(fit$cost_test, col = 2)
 #'fit_2 = netzuko(x_train, y_train, iter = 200)
 #'plot(fit_2$cost_train, type = "l")
+#'fit_3 = netzuko(x_train, y_train, x_test, y_test, iter = 200, activation = "logistic")
+#'plot(fit_3$cost_train, type = "l")
+#'lines(fit$cost_test, col = 2)
 #' @export
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = c(2, 2),
-                          iter = 300, step_size = 0.01, lambda = 1e-5, momentum = 0.9,
-                          ini_w = NULL, sparse = FALSE, verbose = F) {
+                   iter = 300, activation = "tanh", step_size = 0.01,
+                   lambda = 1e-5, momentum = 0.9, ini_w = NULL, sparse = FALSE, verbose = F) {
 
   if ((!is.null(x_test) & is.null(y_test)) | (is.null(x_test) & !is.null(y_test))) {
     stop("x_test and y_test must either be both provided or both NULL")
@@ -198,12 +227,12 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = 
     }
   }
 
-  fb_train = forward_backward_pass(x_train, y_train, w)
+  fb_train = forward_backward_pass(x_train, y_train, w, activation)
   penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
   cost_train[1] = cross_entropy(fb_train$p, y_train) + penalty
 
   if (!is.null(x_test) & !is.null(y_test)) {
-    fb_test = forward_backward_pass(x_test, y_test, w)
+    fb_test = forward_backward_pass(x_test, y_test, w, activation)
     cost_test[1] = cross_entropy(fb_test$p, y_test)
   }
 
@@ -228,12 +257,12 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = 
       w[[j]] = w[[j]] + g_w[[j]]
     }
 
-    fb_train = forward_backward_pass(x_train, y_train, w)
+    fb_train = forward_backward_pass(x_train, y_train, w, activation)
     penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
     cost_train[i] = cross_entropy(fb_train$p, y_train) + penalty
 
     if (!is.null(x_test) & !is.null(y_test)) {
-      fb_test = forward_backward_pass(x_test, y_test, w)
+      fb_test = forward_backward_pass(x_test, y_test, w, activation)
       cost_test[i] = cross_entropy(fb_test$p, y_test)
     }
 
@@ -244,6 +273,6 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = 
     }
   }
 
-  return(ls = list(cost_train = cost_train, cost_test = cost_test, w = w))
+  return(ls = list(cost_train = cost_train, cost_test = cost_test, w = w, activation = activation))
 
 }
