@@ -10,7 +10,7 @@ netzuko(
   x_test = NULL,
   y_test = NULL,
   num_hidden = c(2, 2),
-  iter = 10000,
+  iter = 300,
   step_size = 0.01,
   lambda = 1e-05,
   momentum = 0.9,

@@ -9,7 +9,7 @@ This may be of some interests to viewers who like to learn neural networks, or u
 by the many intricacies of modern neural networks. 
 
 At present the functionalities are limited. The package only supports logistic activations for hidden units, and multi-class classification.
-The functionalities will however be continuously updated. This is the whole point of creating this package after all.
+The functionalities will however be continuously updated. This is the whole point of creating this package after all: to demonstrate how to build up a neural network step-by-step~~~
 
 # Installation
 ```
