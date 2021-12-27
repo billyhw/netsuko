@@ -2,3 +2,4 @@
 
 export(netzuko)
 export(predict_netzuko)
+import(Matrix)

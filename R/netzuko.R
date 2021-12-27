@@ -175,10 +175,13 @@ forward_backward_pass = function(x, y, w, activation) {
 #'fit = netzuko(x_train, y_train, x_test, y_test, num_hidden = c(3, 3), step_size = 0.01, iter = 100)
 #'pred = predict_netzuko(fit, x_test)
 #'fit$cost_test[100]
-#'netzuko::cross_entropy(pred, model.matrix(~ y_test - 1))
-#'fit_2 = netzuko(mnist$x_train[1:100,], mnist$y_train[1:100], x_test, y_test, num_hidden = c(3, 3), step_size = 0.01, iter = 100)
-#'pred_2 = predict_netzuko(fit, x_test, type = "class")
-#'head(pred_2)
+#'-mean(rowSums(model.matrix(~ y_test - 1)*log(pred))) # negative cross entropy
+#' \dontrun{
+#' fit_2 = netzuko(mnist$x_train[1:1000,], mnist$y_train[1:1000],
+#' num_hidden = 100, step_size = 0.01, iter = 100, sparse = T)
+#' pred_2 = predict_netzuko(fit_2, mnist$x_train[1001:2000,], type = "class")
+#' mean(pred_2 == mnist$y_train[1001:2000])
+#' }
 #' @export
 predict_netzuko = function(nn_fit, x_test, type = c("prob", "class")) {
 
@@ -260,6 +263,7 @@ predict_netzuko = function(nn_fit, x_test, type = c("prob", "class")) {
 #'plot(fit_3$cost_train, type = "l")
 #'lines(fit$cost_test, col = 2)
 #' @export
+#' @import Matrix
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = c(2, 2),
                    iter = 300, activation = c("tanh", "logistic"), step_size = 0.01,
                    lambda = 1e-5, momentum = 0.9, ini_w = NULL, sparse = FALSE, verbose = F) {
