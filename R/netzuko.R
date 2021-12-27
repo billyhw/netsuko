@@ -1,3 +1,22 @@
+#' MNIST Database Training Images
+#'
+#' Pixel Intensities and Class Labels of 60000 Training Images from the
+#' MNIST database
+#'
+#' @format A list with 2 elements
+#' \describe{
+#'   \item{x_train}{A matrix of 784 pixel intensites of 60000 images, normalized to range [0,1]}
+#'   \item{y_train}{The digit of each image, from 0 to 9}
+#' }
+#'
+#' @note The data was downloaded from the source below, and included
+#' "train-labels-idx1-ubyte" and "train-images-idx3-ubyte". A script from
+#' https://github.com/rstudio/tfestimators/blob/master/vignettes/examples/mnist.R
+#' was used to decode the original file format to pixel intensities.
+#' Only the 60000 training images are included in this file.
+#' @source \url{http://yann.lecun.com/exdb/mnist/}
+"mnist"
+
 #' Compute the linear predictors to be activated via the activation function
 #'
 #' @param z The inputs or hidden units
