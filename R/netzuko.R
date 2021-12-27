@@ -158,7 +158,7 @@ forward_backward_pass = function(x, y, w, activation) {
 #' Make Predictions on a test set
 #'
 #' @param nn_fit A fitted neural network object from netzuko
-#' @param x The test inputs
+#' @param newdata The test inputs
 #' @param type The output type. When type = "prob" (default) the output is a matrix of class
 #' probabilities. When type = "class", the output is the class with the highest predictive probability
 #' @return A matrix of output probabilities
@@ -173,20 +173,20 @@ forward_backward_pass = function(x, y, w, activation) {
 #'y_test = factor(rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,1])) +
 #'                  rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,2])))
 #'fit = netzuko(x_train, y_train, x_test, y_test, num_hidden = c(3, 3), step_size = 0.01, iter = 100)
-#'pred = predict_netzuko(fit, x_test)
+#'pred = predict(fit, x_test)
 #'fit$cost_test[100]
 #'-mean(rowSums(model.matrix(~ y_test - 1)*log(pred))) # negative cross entropy
 #' \dontrun{
 #' fit_2 = netzuko(mnist$x_train[1:1000,], mnist$y_train[1:1000],
 #' num_hidden = 100, step_size = 0.01, iter = 100, sparse = T)
-#' pred_2 = predict_netzuko(fit_2, mnist$x_train[1001:2000,], type = "class")
+#' pred_2 = predict(fit_2, mnist$x_train[1001:2000,], type = "class")
 #' mean(pred_2 == mnist$y_train[1001:2000])
 #' }
 #' @export
-predict_netzuko = function(nn_fit, x_test, type = c("prob", "class")) {
+predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 
   type = match.arg(type)
-  x_test = cbind(rep(1, nrow(x_test)), x_test)
+  newdata = cbind(rep(1, nrow(newdata)), newdata)
 
   activation = nn_fit$activation
   w = nn_fit$w
@@ -204,11 +204,11 @@ predict_netzuko = function(nn_fit, x_test, type = c("prob", "class")) {
   s_list = vector("list", length(w) - 1)
   z_list = vector("list", length(w))
 
-  z_list[[1]] = x_test
+  z_list[[1]] = newdata
 
   for (i in 2:length(z_list)) {
     s_list[[i-1]] = get_s(z_list[[i-1]], w[[i-1]])
-    z_list[[i]] = cbind(rep(1, nrow(x_test)), activation_func(s_list[[i-1]]))
+    z_list[[i]] = cbind(rep(1, nrow(newdata)), activation_func(s_list[[i-1]]))
   }
 
   t = get_s(z_list[[length(z_list)]], w[[length(w)]])
@@ -351,6 +351,8 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = 
     }
   }
 
-  return(ls = list(cost_train = cost_train, cost_test = cost_test, w = w, activation = activation, y_levels = y_levels))
+  fit = list(cost_train = cost_train, cost_test = cost_test, w = w, activation = activation, y_levels = y_levels)
+  class(fit) = "netzuko"
+  return(fit)
 
 }
