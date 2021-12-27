@@ -136,6 +136,68 @@ forward_backward_pass = function(x, y, w, activation) {
 
 }
 
+#' Make Predictions on a test set
+#'
+#' @param nn_fit A fitted neural network object from netzuko
+#' @param x The test inputs
+#' @param type The output type. When type = "prob" (default) the output is a matrix of class
+#' probabilities. When type = "class", the output is the class with the highest predictive probability
+#' @return A matrix of output probabilities
+#' @note This function is essentially the forward pass of a neural network.
+#' @examples
+#'set.seed(8)
+#'logistic = function(alpha, beta, x) 1/(1 + exp(-(alpha + beta*x)))
+#'x_train = matrix(rnorm(300), 100, 3)
+#'y_train = factor(rbinom(100, 1, prob = logistic(alpha = 0, beta = 1, x_train[,1])) +
+#'                   rbinom(100, 1, prob = logistic(alpha = 0, beta = 1, x_train[,2])))
+#'x_test = matrix(rnorm(3000), 1000, 3)
+#'y_test = factor(rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,1])) +
+#'                  rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,2])))
+#'fit = netzuko(x_train, y_train, x_test, y_test, num_hidden = c(3, 3), step_size = 0.01, iter = 100)
+#'pred = predict_netzuko(fit, x_test)
+#'fit$cost_test[100]
+#'netzuko::cross_entropy(pred, model.matrix(~ y_test - 1))
+#'pred_2 = predict_netzuko(fit, x_test, type = "class")
+#'head(pred_2)
+#' @export
+predict_netzuko = function(nn_fit, x_test, type = c("prob", "class")) {
+
+  type = match.arg(type)
+  x_test = cbind(rep(1, nrow(x_test)), x_test)
+
+  activation = nn_fit$activation
+  w = nn_fit$w
+
+  if (activation == "logistic") {
+    activation_func = logistic_activation
+    grad_func = grad_logistic
+  }
+
+  if (activation == "tanh") {
+    activation_func = tanh_activation
+    grad_func = grad_tanh
+  }
+
+  s_list = vector("list", length(w) - 1)
+  z_list = vector("list", length(w))
+
+  z_list[[1]] = x_test
+
+  for (i in 2:length(z_list)) {
+    s_list[[i-1]] = get_s(z_list[[i-1]], w[[i-1]])
+    z_list[[i]] = cbind(rep(1, nrow(x_test)), activation_func(s_list[[i-1]]))
+  }
+
+  t = get_s(z_list[[length(z_list)]], w[[length(w)]])
+  p = soft_max(t)
+
+  if (type == "prob") return(p)
+  else if (type == "class") {
+    max_ind = apply(p, 1, which.max)
+    return(factor(nn_fit$y_levels[max_ind], levels = nn_fit$y_levels))
+  }
+}
+
 #' Fit a neural network using back-propagation
 #'
 #' @param x_train The training inputs
@@ -182,6 +244,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = 
                    iter = 300, activation = c("tanh", "logistic"), step_size = 0.01,
                    lambda = 1e-5, momentum = 0.9, ini_w = NULL, sparse = FALSE, verbose = F) {
 
+  y_levels = levels(y_train)
   activation = match.arg(activation)
 
   if ((!is.null(x_test) & is.null(y_test)) | (is.null(x_test) & !is.null(y_test))) {
@@ -264,6 +327,6 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = 
     }
   }
 
-  return(ls = list(cost_train = cost_train, cost_test = cost_test, w = w, activation = activation))
+  return(ls = list(cost_train = cost_train, cost_test = cost_test, w = w, activation = activation, y_levels = y_levels))
 
 }
