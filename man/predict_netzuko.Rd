@@ -36,6 +36,7 @@ fit = netzuko(x_train, y_train, x_test, y_test, num_hidden = c(3, 3), step_size 
 pred = predict_netzuko(fit, x_test)
 fit$cost_test[100]
 netzuko::cross_entropy(pred, model.matrix(~ y_test - 1))
+fit_2 = netzuko(mnist$x_train[1:100,], mnist$y_train[1:100], x_test, y_test, num_hidden = c(3, 3), step_size = 0.01, iter = 100)
 pred_2 = predict_netzuko(fit, x_test, type = "class")
 head(pred_2)
 }

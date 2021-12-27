@@ -1,19 +1,19 @@
 #' MNIST Database Training Images
 #'
-#' Pixel Intensities and Class Labels of 60000 Training Images from the
+#' Pixel intensities and class labels of 5000 training images from the
 #' MNIST database
 #'
 #' @format A list with 2 elements
 #' \describe{
-#'   \item{x_train}{A matrix of 784 pixel intensites of 60000 images, normalized to range [0,1]}
+#'   \item{x_train}{A matrix of 784 pixel intensites of 5000 images, normalized to range [0,1]}
 #'   \item{y_train}{The digit of each image, from 0 to 9}
 #' }
 #'
-#' @note The data was downloaded from the source below, and included
+#' @note The data was downloaded from the source below and the links
 #' "train-labels-idx1-ubyte" and "train-images-idx3-ubyte". A script from
 #' https://github.com/rstudio/tfestimators/blob/master/vignettes/examples/mnist.R
 #' was used to decode the original file format to pixel intensities.
-#' Only the 60000 training images are included in this file.
+#' Only a subset of 5000 training images are included in this file.
 #' @source \url{http://yann.lecun.com/exdb/mnist/}
 "mnist"
 
@@ -176,6 +176,7 @@ forward_backward_pass = function(x, y, w, activation) {
 #'pred = predict_netzuko(fit, x_test)
 #'fit$cost_test[100]
 #'netzuko::cross_entropy(pred, model.matrix(~ y_test - 1))
+#'fit_2 = netzuko(mnist$x_train[1:100,], mnist$y_train[1:100], x_test, y_test, num_hidden = c(3, 3), step_size = 0.01, iter = 100)
 #'pred_2 = predict_netzuko(fit, x_test, type = "class")
 #'head(pred_2)
 #' @export
