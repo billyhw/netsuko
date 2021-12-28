@@ -78,7 +78,7 @@ grad_logistic = function(s) logistic_activation(s)*(1-logistic_activation(s))
 #' @param s The linear predictors
 #' @return The gradient of logistic activation evaluated at s
 #' @note For Internal Use
-grad_tanh = function(s) 1-tanh_activation(s)
+grad_tanh = function(s) 1-tanh_activation(s)^2
 
 #' Compute the negative cross-entropy for multi-class classification
 #'
