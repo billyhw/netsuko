@@ -262,11 +262,18 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #'fit_3 = netzuko(x_train, y_train, x_test, y_test, iter = 200, activation = "logistic")
 #'plot(fit_3$cost_train, type = "l")
 #'lines(fit$cost_test, col = 2)
+#'y_train = factor(rbinom(100, 1, prob = logistic(alpha = 0, beta = 1, x_train[,1])))
+#'y_test = factor(rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,1])))
+#'fit_4 = netzuko(x_train[,1], y_train, x_test[,1], y_test, iter = 200, num_hidden = 2)
+#'plot(fit_4$cost_train, type = "l", ylim = range(c(fit_4$cost_train, fit_4$cost_test)))
+#'lines(fit_4$cost_test, col = 2)
 #' @export
 #' @import Matrix
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = c(2, 2),
                    iter = 300, activation = c("tanh", "logistic"), step_size = 0.01,
                    lambda = 1e-5, momentum = 0.9, ini_w = NULL, sparse = FALSE, verbose = F) {
+
+  if (is.vector(x_train) | is.null(dim(x_train))) x_train = matrix(x_train, ncol = 1)
 
   y_levels = levels(y_train)
   activation = match.arg(activation)
@@ -282,6 +289,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = 
   cost_test = NULL
 
   if (!is.null(x_test) & !is.null(y_test)) {
+    if (is.vector(x_test) | is.null(dim(x_test))) x_test = matrix(x_test, ncol = 1)
     x_test = cbind(rep(1, nrow(x_test)), x_test)
     y_test = model.matrix(~ y_test - 1)
     cost_test = rep(NA, iter)
