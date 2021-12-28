@@ -199,15 +199,8 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
   activation = nn_fit$activation
   w = nn_fit$w
 
-  if (activation == "logistic") {
-    activation_func = logistic_activation
-    grad_func = grad_logistic
-  }
-
-  if (activation == "tanh") {
-    activation_func = tanh_activation
-    grad_func = grad_tanh
-  }
+  if (activation == "logistic") activation_func = logistic_activation
+  if (activation == "tanh") activation_func = tanh_activation
 
   s_list = vector("list", length(w) - 1)
   z_list = vector("list", length(w))
