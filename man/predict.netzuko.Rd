@@ -36,10 +36,16 @@ fit = netzuko(x_train, y_train, x_test, y_test, num_hidden = c(3, 3), step_size 
 pred = predict(fit, x_test)
 fit$cost_test[100]
 -mean(rowSums(model.matrix(~ y_test - 1)*log(pred))) # negative cross entropy
+y_train = factor(rbinom(100, 1, prob = logistic(alpha = 0, beta = 1, x_train[,1])))
+y_test = factor(rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,1])))
+fit_2 = netzuko(x_train[,1], y_train, x_test[,1], y_test, iter = 100, num_hidden = 2)
+pred_2 = predict(fit_2, x_test[,1])
+fit_2$cost_test[100]
+-mean(rowSums(model.matrix(~ y_test - 1)*log(pred_2))) # negative cross entropy
 \dontrun{
-fit_2 = netzuko(mnist$x_train[1:1000,], mnist$y_train[1:1000],
+fit_3 = netzuko(mnist$x_train[1:1000,], mnist$y_train[1:1000],
 num_hidden = 100, step_size = 0.01, iter = 100, sparse = T)
-pred_2 = predict(fit_2, mnist$x_train[1001:2000,], type = "class")
-mean(pred_2 == mnist$y_train[1001:2000])
+pred_3 = predict(fit_3, mnist$x_train[1001:2000,], type = "class")
+mean(pred_3 == mnist$y_train[1001:2000])
 }
 }
