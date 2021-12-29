@@ -279,13 +279,31 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #'lines(fit_4$cost_test, col = 2)
 #' @export
 #' @import Matrix
-netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = c(2, 2),
+netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type = NULL, num_hidden = c(2, 2),
                    iter = 300, activation = c("tanh", "logistic"), step_size = 0.01,
                    lambda = 1e-5, momentum = 0.9, ini_w = NULL, sparse = FALSE, verbose = F) {
 
   if (is.vector(x_train) | is.null(dim(x_train))) x_train = matrix(x_train, ncol = 1)
 
-  y_levels = levels(y_train)
+  if (is.null(output_type)) {
+    if (is.numeric(y_train)) {
+      output_type = "numeric"
+      message("output_type not specified, set to numeric")
+    }
+    else if (is.factor(y_train)) {
+      output_type = "categorical"
+      message("output_type not specified, set to categorical")
+    }
+    else stop("output_type must be one of numeric or categorical")
+  }
+
+  if (output_type == "categorical") cost_func = cross_entropy
+  else if (output_type == "numeric") cost_func = least_square
+  else stop("output_type must be one of numeric or categorical")
+
+  if (output_type == "categorical") y_levels = levels(y_train)
+  else y_levels = NULL
+
   activation = match.arg(activation)
 
   if ((!is.null(x_test) & is.null(y_test)) | (is.null(x_test) & !is.null(y_test))) {
@@ -301,17 +319,17 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = 
   if (!is.null(x_test) & !is.null(y_test)) {
     if (is.vector(x_test) | is.null(dim(x_test))) x_test = matrix(x_test, ncol = 1)
     x_test = cbind(rep(1, nrow(x_test)), x_test)
-    y_test = model.matrix(~ y_test - 1)
+    if (output_type = "categorical") y_test = model.matrix(~ y_test - 1)
     cost_test = rep(NA, iter)
   }
 
   if (sparse) {
     require(Matrix)
     x_train = Matrix(x_train)
-    y_train = Matrix(y_train)
+    if (output_type = "categorical") y_train = Matrix(y_train)
     if (!is.null(x_test) & !is.null(y_test)) {
       x_test = Matrix(x_test)
-      y_test = Matrix(y_test)
+      if (output_type = "categorical") y_test = Matrix(y_test)
     }
   }
 
@@ -323,13 +341,13 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = 
     }
   }
 
-  fb_train = forward_backward_pass(x_train, y_train, w, activation)
+  fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
   penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
-  cost_train[1] = cross_entropy(fb_train$p, y_train) + penalty
+  cost_train[1] = cost_func(fb_train$p, y_train) + penalty
 
   if (!is.null(x_test) & !is.null(y_test)) {
-    fb_test = forward_backward_pass(x_test, y_test, w, activation)
-    cost_test[1] = cross_entropy(fb_test$p, y_test)
+    fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type)
+    cost_test[1] = cost_func(fb_test$p, y_test)
   }
 
   if (verbose) {
@@ -353,13 +371,13 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = 
       w[[j]] = w[[j]] + g_w[[j]]
     }
 
-    fb_train = forward_backward_pass(x_train, y_train, w, activation)
+    fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
     penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
-    cost_train[i] = cross_entropy(fb_train$p, y_train) + penalty
+    cost_train[i] = cost_func(fb_train$p, y_train) + penalty
 
     if (!is.null(x_test) & !is.null(y_test)) {
-      fb_test = forward_backward_pass(x_test, y_test, w, activation)
-      cost_test[i] = cross_entropy(fb_test$p, y_test)
+      fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type)
+      cost_test[i] = cost_func(fb_test$p, y_test)
     }
 
     if (verbose) {
@@ -369,7 +387,8 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, num_hidden = 
     }
   }
 
-  fit = list(cost_train = cost_train, cost_test = cost_test, w = w, activation = activation, y_levels = y_levels)
+  fit = list(cost_train = cost_train, cost_test = cost_test, w = w,
+             activation = activation, y_levels = y_levels, output_type = output_type)
   class(fit) = "netzuko"
   return(fit)
 
