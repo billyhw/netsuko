@@ -42,10 +42,18 @@ fit_2 = netzuko(x_train[,1], y_train, x_test[,1], y_test, iter = 100, num_hidden
 pred_2 = predict(fit_2, x_test[,1])
 fit_2$cost_test[100]
 -mean(rowSums(model.matrix(~ y_test - 1)*log(pred_2))) # negative cross entropy
+x_train = matrix(rnorm(300), 100, 3)
+y_train = x_train[,1]^2
+x_test = matrix(rnorm(3000), 1000, 3)
+y_test = x_test[,1]^2
+fit_3 = netzuko(x_train, y_train, x_test, y_test, step_size = 0.003, iter = 100)
+pred_3 = predict(fit_3, x_test)
+fit_3$cost_test[100]
+mean((y_test - pred_3)^2)/2 # halved mean square error
 \dontrun{
-fit_3 = netzuko(mnist$x_train[1:1000,], mnist$y_train[1:1000],
+fit_4 = netzuko(mnist$x_train[1:1000,], mnist$y_train[1:1000],
 num_hidden = 100, step_size = 0.01, iter = 100, sparse = T)
-pred_3 = predict(fit_3, mnist$x_train[1001:2000,], type = "class")
-mean(pred_3 == mnist$y_train[1001:2000])
+pred_4 = predict(fit_4, mnist$x_train[1001:2000,], type = "class")
+mean(pred_4 == mnist$y_train[1001:2000])
 }
 }
