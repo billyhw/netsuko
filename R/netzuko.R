@@ -358,10 +358,10 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   if (sparse) {
     require(Matrix)
     x_train = Matrix(x_train)
-    if (output_type == "categorical") y_train = Matrix(y_train)
+    y_train = Matrix(y_train)
     if (!is.null(x_test) & !is.null(y_test)) {
       x_test = Matrix(x_test)
-      if (output_type == "categorical") y_test = Matrix(y_test)
+      y_test = Matrix(y_test)
     }
   }
 
