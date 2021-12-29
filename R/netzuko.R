@@ -115,7 +115,7 @@ grad_w = function(delta, x) -crossprod(x, delta)/nrow(x)
 #' p: the output probabilities
 #' delta: a list of errors backpropagated throught the layers
 #' z: the hidden units values
-forward_backward_pass = function(x, y, w, activation) {
+forward_backward_pass = function(x, y, w, activation, output_type) {
 
   if (activation == "logistic") {
     activation_func = logistic_activation
@@ -142,7 +142,8 @@ forward_backward_pass = function(x, y, w, activation) {
   # compute the output units
 
   t = get_s(z_list[[length(z_list)]], w[[length(w)]])
-  p = soft_max(t)
+  if (output_type == "categorical") p = soft_max(t)
+  else if (output_type == "numeric") p = t
 
   # delta_list stores the delta from
   # output -> last hidden layer -> 2nd last hidden layer etc.
