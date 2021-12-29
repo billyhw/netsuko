@@ -297,6 +297,14 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #'fit_5 = netzuko(x_train, y_train, x_test, y_test, step_size = 0.003, iter = 200)
 #'plot(fit_5$cost_train, type = "l")
 #'lines(fit_5$cost_test, col = 2)
+#'y_train = cbind(y_train, x_train[,2]^2)
+#'y_test = cbind(y_test, x_test[,2]^2)
+#'fit_6 = netzuko(x_train, y_train, x_test, y_test, step_size = 0.003, iter = 200)
+#'plot(fit_6$cost_train, type = "l")
+#'lines(fit_6$cost_test, col = 2)
+#'pred = predict(fit_6, x_test)
+#'fit_6$cost_test[200]
+#'mean(rowSums((y_test - pred)^2))/2
 #' @export
 #' @import Matrix
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type = NULL, num_hidden = c(2, 2),
@@ -304,6 +312,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
                    lambda = 1e-5, momentum = 0.9, ini_w = NULL, sparse = FALSE, verbose = F) {
 
   if (is.vector(x_train) | is.null(dim(x_train))) x_train = matrix(x_train, ncol = 1)
+
 
   if (is.null(output_type)) {
     if (is.numeric(y_train)) {
@@ -318,7 +327,10 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   }
 
   if (output_type == "categorical") cost_func = cross_entropy
-  else if (output_type == "numeric") cost_func = least_square
+  else if (output_type == "numeric") {
+    cost_func = least_square
+    if (is.vector(y_train) | is.null(dim(y_train))) y_train = matrix(y_train, ncol = 1)
+  }
   else stop("output_type must be one of numeric or categorical")
 
   if (output_type == "categorical") y_levels = levels(y_train)
@@ -354,7 +366,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   }
 
   if (is.null(ini_w)) {
-    num_hidden = c(num_p, num_hidden, ifelse(output_type == "numeric", 1, ncol(y_train)))
+    num_hidden = c(num_p, num_hidden, ncol(y_train))
     w = vector("list", length(num_hidden) - 1)
     for (i in 1:(length(num_hidden) - 1)) {
       w[[i]] = matrix(rnorm((num_hidden[i] + 1)*num_hidden[i+1], sd = 0.1), num_hidden[i] + 1, num_hidden[i+1])

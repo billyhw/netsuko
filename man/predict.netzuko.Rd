@@ -11,7 +11,7 @@
 
 \item{newdata}{The test inputs}
 
-\item{type}{The output type. When type = "prob" (default) the output is a matrix of class
+\item{type}{The prediction type. When type = "prob" (default) the output is a matrix of class
 probabilities. When type = "class", the output is the class with the highest predictive probability}
 }
 \value{
