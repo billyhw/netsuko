@@ -142,9 +142,9 @@ forward_backward_pass = function(x, y, w, activation, output_type) {
 
   # compute the output units
 
-  t = get_s(z_list[[length(z_list)]], w[[length(w)]])
-  if (output_type == "categorical") p = soft_max(t)
-  else if (output_type == "numeric") p = t
+  s = get_s(z_list[[length(z_list)]], w[[length(w)]])
+  if (output_type == "categorical") p = soft_max(s)
+  else if (output_type == "numeric") p = s
 
   # delta_list stores the delta from
   # output -> last hidden layer -> 2nd last hidden layer etc.
@@ -210,10 +210,11 @@ forward_backward_pass = function(x, y, w, activation, output_type) {
 #' @export
 predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 
-  if (is.vector(newdata) | is.null(dim(newdata))) newdata = matrix(newdata, ncol = 1)
+  # if (is.vector(newdata) | is.null(dim(newdata))) newdata = matrix(newdata, ncol = 1)
 
   type = match.arg(type)
-  newdata = cbind(rep(1, nrow(newdata)), newdata)
+  #newdata = cbind(rep(1, nrow(newdata)), newdata)
+  newdata = model.matrix(~ newdata)
 
   activation = nn_fit$activation
   w = nn_fit$w
