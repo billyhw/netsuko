@@ -282,7 +282,7 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #'y_train = x_train[,1]^2
 #'x_test = matrix(rnorm(3000), 1000, 3)
 #'y_test = x_test[,1]^2
-#'fit_5 = netzuko(x_train, y_train, x_test, y_test, iter = 200)
+#'fit_5 = netzuko(x_train, y_train, x_test, y_test, step_size = 0.003, iter = 200)
 #'plot(fit_5$cost_train, type = "l")
 #'lines(fit_5$cost_test, col = 2)
 #' @export
