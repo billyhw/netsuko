@@ -328,7 +328,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   if (output_type == "categorical") cost_func = cross_entropy
   else if (output_type == "numeric") {
     cost_func = least_square
-    if (is.vector(y_train) | is.null(dim(y_train))) y_train = matrix(y_train, ncol = 1)
+    # if (is.vector(y_train) | is.null(dim(y_train))) y_train = matrix(y_train, ncol = 1)
   }
   else stop("output_type must be one of numeric or categorical")
 
