@@ -313,7 +313,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
 
   num_p = ncol(x_train)
   x_train = cbind(rep(1, nrow(x_train)), x_train)
-  y_train = model.matrix(~ y_train - 1)
+  if (output_type == "categorical") y_train = model.matrix(~ y_train - 1)
   cost_train = rep(NA, iter)
   cost_test = NULL
 
@@ -335,7 +335,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   }
 
   if (is.null(ini_w)) {
-    num_hidden = c(num_p, num_hidden, ncol(y_train))
+    num_hidden = c(num_p, num_hidden, ifelse(output_type == "numeric", 1, ncol(y_train)))
     w = vector("list", length(num_hidden) - 1)
     for (i in 1:(length(num_hidden) - 1)) {
       w[[i]] = matrix(rnorm((num_hidden[i] + 1)*num_hidden[i+1], sd = 0.1), num_hidden[i] + 1, num_hidden[i+1])
