@@ -313,7 +313,6 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
 
   # if (is.vector(x_train) | is.null(dim(x_train))) x_train = matrix(x_train, ncol = 1)
 
-
   if (is.null(output_type)) {
     if (is.numeric(y_train)) {
       output_type = "numeric"
@@ -345,14 +344,14 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   # num_p = ncol(x_train)
   #x_train = cbind(rep(1, nrow(x_train)), x_train)
   x_train = model.matrix(~ x_train)
-  if (output_type == "categorical") y_train = model.matrix(~ y_train - 1)
+  y_train = model.matrix(~ y_train - 1)
   cost_train = rep(NA, iter)
   cost_test = NULL
 
   if (!is.null(x_test) & !is.null(y_test)) {
     # if (is.vector(x_test) | is.null(dim(x_test))) x_test = matrix(x_test, ncol = 1)
     x_test = model.matrix(~ x_test)
-    if (output_type == "categorical") y_test = model.matrix(~ y_test - 1)
+    y_test = model.matrix(~ y_test - 1)
     cost_test = rep(NA, iter)
   }
 
