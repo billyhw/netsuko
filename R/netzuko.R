@@ -232,9 +232,9 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
     z_list[[i]] = cbind(rep(1, nrow(newdata)), activation_func(s_list[[i-1]]))
   }
 
-  t = get_s(z_list[[length(z_list)]], w[[length(w)]])
-  if (nn_fit$output_type == "categorical") p = soft_max(t)
-  else if (nn_fit$output_type == "numeric") return(t)
+  s = get_s(z_list[[length(z_list)]], w[[length(w)]])
+  if (nn_fit$output_type == "categorical") p = soft_max(s)
+  else if (nn_fit$output_type == "numeric") return(s)
 
   if (type == "prob") return(p)
   else if (type == "class") {
