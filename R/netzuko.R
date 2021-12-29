@@ -111,6 +111,7 @@ grad_w = function(delta, x) -crossprod(x, delta)/nrow(x)
 #' @param y The outputs
 #' @param w The list of weights: 1st element are connection of weights from input to 1st hidden layer,
 #' and the last element are connection weights from the last hidden layer to the outputs
+#' @param output_type The output type: either "numeric" (regression) or "categorical" (prediction).
 #' @return A list containing the following elements:
 #' p: the output probabilities
 #' delta: a list of errors backpropagated throught the layers
@@ -247,6 +248,8 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #' @param y_train The training outputs
 #' @param x_test The test inputs
 #' @param y_test The test outputs
+#' @param output_type The output type: either "numeric" (regression) or "categorical" (prediction).
+#' If NULL the function will try to guess the output type based on y_train
 #' @param num_hidden A vector with length equal the number of hidden layers, and
 #' values equal the number of hidden units in the corresponding layer. The default c(2, 2) will fit
 #' a neural network with 2 hidden layers with 2 hidden units in each layer.

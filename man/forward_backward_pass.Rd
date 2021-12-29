@@ -13,6 +13,8 @@ forward_backward_pass(x, y, w, activation, output_type)
 
 \item{w}{The list of weights: 1st element are connection of weights from input to 1st hidden layer,
 and the last element are connection weights from the last hidden layer to the outputs}
+
+\item{output_type}{The output type: either "numeric" (regression) or "categorical" (prediction).}
 }
 \value{
 A list containing the following elements:

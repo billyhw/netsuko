@@ -30,6 +30,9 @@ netzuko(
 
 \item{y_test}{The test outputs}
 
+\item{output_type}{The output type: either "numeric" (regression) or "categorical" (prediction).
+If NULL the function will try to guess the output type based on y_train}
+
 \item{num_hidden}{A vector with length equal the number of hidden layers, and
 values equal the number of hidden units in the corresponding layer. The default c(2, 2) will fit
 a neural network with 2 hidden layers with 2 hidden units in each layer.}
