@@ -278,6 +278,13 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #'fit_4 = netzuko(x_train[,1], y_train, x_test[,1], y_test, iter = 200, num_hidden = 2)
 #'plot(fit_4$cost_train, type = "l", ylim = range(c(fit_4$cost_train, fit_4$cost_test)))
 #'lines(fit_4$cost_test, col = 2)
+#'x_train = matrix(rnorm(300), 100, 3)
+#'y_train = x_train[,1]^2
+#'x_test = matrix(rnorm(3000), 1000, 3)
+#'y_test = x_test[,1]^2
+#'fit_5 = netzuko(x_train, y_train, x_test, y_test, iter = 200)
+#'plot(fit_5$cost_train, type = "l")
+#'lines(fit_5$cost_test, col = 2)
 #' @export
 #' @import Matrix
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type = NULL, num_hidden = c(2, 2),
@@ -320,17 +327,17 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   if (!is.null(x_test) & !is.null(y_test)) {
     if (is.vector(x_test) | is.null(dim(x_test))) x_test = matrix(x_test, ncol = 1)
     x_test = cbind(rep(1, nrow(x_test)), x_test)
-    if (output_type = "categorical") y_test = model.matrix(~ y_test - 1)
+    if (output_type == "categorical") y_test = model.matrix(~ y_test - 1)
     cost_test = rep(NA, iter)
   }
 
   if (sparse) {
     require(Matrix)
     x_train = Matrix(x_train)
-    if (output_type = "categorical") y_train = Matrix(y_train)
+    if (output_type == "categorical") y_train = Matrix(y_train)
     if (!is.null(x_test) & !is.null(y_test)) {
       x_test = Matrix(x_test)
-      if (output_type = "categorical") y_test = Matrix(y_test)
+      if (output_type == "categorical") y_test = Matrix(y_test)
     }
   }
 

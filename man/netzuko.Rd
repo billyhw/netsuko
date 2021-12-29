@@ -9,6 +9,7 @@ netzuko(
   y_train,
   x_test = NULL,
   y_test = NULL,
+  output_type = NULL,
   num_hidden = c(2, 2),
   iter = 300,
   activation = c("tanh", "logistic"),
@@ -82,4 +83,11 @@ y_test = factor(rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,1])
 fit_4 = netzuko(x_train[,1], y_train, x_test[,1], y_test, iter = 200, num_hidden = 2)
 plot(fit_4$cost_train, type = "l", ylim = range(c(fit_4$cost_train, fit_4$cost_test)))
 lines(fit_4$cost_test, col = 2)
+x_train = matrix(rnorm(300), 100, 3)
+y_train = x_train[,1]^2
+x_test = matrix(rnorm(3000), 1000, 3)
+y_test = x_test[,1]^2
+fit_5 = netzuko(x_train, y_train, x_test, y_test, step_size = 0.01, iter = 200)
+plot(fit_5$cost_train, type = "l")
+lines(fit_5$cost_test, col = 2)
 }
