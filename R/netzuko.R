@@ -95,7 +95,7 @@ cross_entropy = function(p, y) -mean(rowSums(y*log(p)))
 #' @return The least square error (halved)
 #' @note For Internal Use. Note the least square error is halved
 #' to simplify the gradients
-least_square = function(p, y) mean((y - p)^2)/2
+least_square = function(p, y) mean(rowSums((y - p)^2))/2
 
 #' Compute the gradient of the weight for a given layer
 #'
