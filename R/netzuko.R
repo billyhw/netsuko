@@ -122,10 +122,6 @@ scale_matrix = function(x, mean_x = NULL, sd_x = NULL, epsilon = 1e-6, intercept
   return(ls = list(x = x_scaled, mean_x = mean_x, sd_x = sd_x))
 }
 
-bob = scale(x_train)
-jack = scale_matrix(x_train, epsilon = 0)$x
-sum(abs(bob - jack))
-
 #' Compute crucial quantities evaluated from one forward-Backward pass through the neural network
 #'
 #' @param x The inputs
