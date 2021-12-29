@@ -105,6 +105,27 @@ least_square = function(p, y) mean(rowSums((y - p)^2))/2
 #' @note For Internal Use
 grad_w = function(delta, x) -crossprod(x, delta)/nrow(x)
 
+#' Scale a matrix
+#' @param x The matrix to be scaled
+#' @param mean_x The means to subtract. Will be computed if NULL
+#' @param sd_x The standard deviation to devide. Will be computed if NULL
+#' @param epsilon A small constant added to the standard deviations to dividing by 0
+#' @param intercept Indicates if the first column of x is an intercept (all 1's)
+#' @return A list containing the scaled matrix, and the mean
+#' and standard deviations used by scaling
+#' @note For Internal Use
+scale_matrix = function(x, mean_x = NULL, sd_x = NULL, epsilon = 1e-6, intercept = F) {
+  if (is.null(mean_x)) mean_x = colMeans(x)
+  if (is.null(sd_x)) sd_x = sqrt(rowSums((t(x) - mean_x)^2)/(nrow(x)-1)) + epsilon
+  x_scaled = t((t(x) - mean_x)/sd_x)
+  if (intercept) x[,1] = rep(1, nrow(x))
+  return(ls = list(x = x_scaled, mean_x = mean_x, sd_x = sd_x))
+}
+
+bob = scale(x_train)
+jack = scale_matrix(x_train, epsilon = 0)$x
+sum(abs(bob - jack))
+
 #' Compute crucial quantities evaluated from one forward-Backward pass through the neural network
 #'
 #' @param x The inputs
