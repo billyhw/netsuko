@@ -170,7 +170,7 @@ forward_backward_pass = function(x, y, w, activation, output_type) {
 #'
 #' @param nn_fit A fitted neural network object from netzuko
 #' @param newdata The test inputs
-#' @param type The output type. When type = "prob" (default) the output is a matrix of class
+#' @param type The prediction type. When type = "prob" (default) the output is a matrix of class
 #' probabilities. When type = "class", the output is the class with the highest predictive probability
 #' @return A matrix of output probabilities
 #' @note This function is essentially the forward pass of a neural network.
