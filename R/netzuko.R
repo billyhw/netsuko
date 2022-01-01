@@ -109,16 +109,15 @@ grad_w = function(delta, x) -crossprod(x, delta)/nrow(x)
 #' @param x The matrix to be scaled
 #' @param mean_x The means to subtract. Will be computed if NULL
 #' @param sd_x The standard deviation to devide. Will be computed if NULL
-#' @param epsilon A small constant added to the standard deviations to dividing by 0
 #' @param intercept Indicates if the first column of x is an intercept (all 1's)
 #' @return A list containing the scaled matrix, and the mean
 #' and standard deviations used by scaling
 #' @note For Internal Use
-scale_matrix = function(x, mean_x = NULL, sd_x = NULL, epsilon = 1e-6, intercept = F) {
+scale_matrix = function(x, mean_x = NULL, sd_x = NULL, intercept = F) {
   if (is.null(mean_x)) mean_x = colMeans(x)
-  if (is.null(sd_x)) sd_x = sqrt(rowSums((t(x) - mean_x)^2)/(nrow(x)-1)) + epsilon
+  if (is.null(sd_x)) sd_x = sqrt(rowSums((t(x) - mean_x)^2)/(nrow(x)-1))
   x_scaled = t((t(x) - mean_x)/sd_x)
-  if (intercept) x[,1] = rep(1, nrow(x))
+  if (intercept) x_scaled[,1] = rep(1, nrow(x))
   return(ls = list(x = x_scaled, mean_x = mean_x, sd_x = sd_x))
 }
 
@@ -232,6 +231,9 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
   type = match.arg(type)
   #newdata = cbind(rep(1, nrow(newdata)), newdata)
   newdata = model.matrix(~ newdata)
+  if (!is.null(nn_fit$mean_x) & !is.null(nn_fit$sd_x)) {
+    newdata = scale_matrix(newdata, mean_x = nn_fit$mean_x, sd_x = nn_fit$sd_x, intercept = T)$x
+  }
 
   activation = nn_fit$activation
   w = nn_fit$w
@@ -251,7 +253,10 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 
   s = get_s(z_list[[length(z_list)]], w[[length(w)]])
   if (nn_fit$output_type == "categorical") p = soft_max(s)
-  else if (nn_fit$output_type == "numeric") return(s)
+  else if (nn_fit$output_type == "numeric") {
+    if (is.null(nn_fit$mean_y) | is.null(nn_fit$sd_y)) return(s)
+    else return(t(t(s)*nn_fit$sd_y + nn_fit$mean_y))
+  }
 
   if (type == "prob") return(p)
   else if (type == "class") {
@@ -320,14 +325,21 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #'fit_6 = netzuko(x_train, y_train, x_test, y_test, step_size = 0.003, iter = 200)
 #'plot(fit_6$cost_train, type = "l")
 #'lines(fit_6$cost_test, col = 2)
-#'pred = predict(fit_6, x_test)
+#'pred_6 = predict(fit_6, x_test)
 #'fit_6$cost_test[200]
-#'mean(rowSums((y_test - pred)^2))/2
+#'mean(rowSums((y_test - pred_6)^2))/2
+#'fit_7 = netzuko(x_train, y_train, x_test, y_test, step_size = 0.01, iter = 500, scale = T)
+#'plot(fit_7$cost_train, type = "l")
+#'lines(fit_7$cost_test, col = 2)
+#'pred_7 = predict(fit_7, x_test)
+#'fit_7$cost_test[500]
+#'tmp = scale_matrix(y_train, intercept = F)
+#'mean(rowSums((scale_matrix(y_test, tmp$mean_x, tmp$sd_x, intercept = F)$x - scale_matrix(pred_7, tmp$mean_x, tmp$sd_x, intercept = F)$x)^2))/2
 #' @export
 #' @import Matrix
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type = NULL, num_hidden = c(2, 2),
                    iter = 300, activation = c("tanh", "logistic"), step_size = 0.01,
-                   lambda = 1e-5, momentum = 0.9, ini_w = NULL, sparse = FALSE, verbose = F) {
+                   lambda = 1e-5, momentum = 0.9, ini_w = NULL, scale = FALSE, sparse = FALSE, verbose = F) {
 
   # if (is.vector(x_train) | is.null(dim(x_train))) x_train = matrix(x_train, ncol = 1)
 
@@ -371,6 +383,32 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
     x_test = model.matrix(~ x_test)
     y_test = model.matrix(~ y_test - 1)
     cost_test = rep(NA, iter)
+  }
+
+  mean_x = NULL
+  sd_x = NULL
+  mean_y = NULL
+  sd_y = NULL
+
+  if (scale) {
+    x_train = scale_matrix(x_train, intercept = T)
+    mean_x = x_train$mean_x
+    sd_x = x_train$sd_x
+    x_train = x_train$x
+    if (output_type == "numeric") {
+      y_train = scale_matrix(y_train, intercept = F)
+      mean_y = y_train$mean_x
+      sd_y = y_train$sd_x
+      y_train = y_train$x
+    }
+    if (any(sd_x[-1] == 0) | any(sd_y == 0)) {
+      stop("Training data contains inputs/outputs with 0 standard deviation.
+           Please check your data or set scale = F")
+    }
+    if (!is.null(x_test) & !is.null(y_test)) {
+      x_test = scale_matrix(x_test, mean_x, sd_x, intercept = T)$x
+      if (output_type == "numeric") y_test = scale_matrix(y_test, mean_y, sd_y, intercept = F)$x
+    }
   }
 
   if (sparse) {
@@ -438,7 +476,8 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   }
 
   fit = list(cost_train = cost_train, cost_test = cost_test, w = w,
-             activation = activation, y_levels = y_levels, output_type = output_type)
+             activation = activation, y_levels = y_levels, output_type = output_type,
+             mean_x = mean_x, mean_y = mean_y, sd_x = sd_x, sd_y = sd_y)
   class(fit) = "netzuko"
   return(fit)
 

@@ -4,7 +4,7 @@
 \alias{scale_matrix}
 \title{Scale a matrix}
 \usage{
-scale_matrix(x, mean_x = NULL, sd_x = NULL, epsilon = 1e-06, intercept = F)
+scale_matrix(x, mean_x = NULL, sd_x = NULL, intercept = F)
 }
 \arguments{
 \item{x}{The matrix to be scaled}
@@ -12,8 +12,6 @@ scale_matrix(x, mean_x = NULL, sd_x = NULL, epsilon = 1e-06, intercept = F)
 \item{mean_x}{The means to subtract. Will be computed if NULL}
 
 \item{sd_x}{The standard deviation to devide. Will be computed if NULL}
-
-\item{epsilon}{A small constant added to the standard deviations to dividing by 0}
 
 \item{intercept}{Indicates if the first column of x is an intercept (all 1's)}
 }

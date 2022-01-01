@@ -17,6 +17,7 @@ netzuko(
   lambda = 1e-05,
   momentum = 0.9,
   ini_w = NULL,
+  scale = FALSE,
   sparse = FALSE,
   verbose = F
 )
@@ -98,7 +99,14 @@ y_test = cbind(y_test, x_test[,2]^2)
 fit_6 = netzuko(x_train, y_train, x_test, y_test, step_size = 0.003, iter = 200)
 plot(fit_6$cost_train, type = "l")
 lines(fit_6$cost_test, col = 2)
-pred = predict(fit_6, x_test)
+pred_6 = predict(fit_6, x_test)
 fit_6$cost_test[200]
-mean(rowSums((y_test - pred)^2))/2
+mean(rowSums((y_test - pred_6)^2))/2
+fit_7 = netzuko(x_train, y_train, x_test, y_test, step_size = 0.01, iter = 500, scale = T)
+plot(fit_7$cost_train, type = "l")
+lines(fit_7$cost_test, col = 2)
+pred_7 = predict(fit_7, x_test)
+fit_7$cost_test[500]
+tmp = scale_matrix(y_train, intercept = F)
+mean(rowSums((scale_matrix(y_test, tmp$mean_x, tmp$sd_x, intercept = F)$x - scale_matrix(pred_7, tmp$mean_x, tmp$sd_x, intercept = F)$x)^2))/2
 }
