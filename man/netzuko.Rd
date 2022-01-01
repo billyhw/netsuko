@@ -17,6 +17,7 @@ netzuko(
   lambda = 1e-05,
   momentum = 0.9,
   ini_w = NULL,
+  grad_method = c("momentum", "nesterov"),
   sparse = FALSE,
   verbose = F
 )
@@ -47,6 +48,9 @@ a neural network with 2 hidden layers with 2 hidden units in each layer.}
 
 \item{ini_w}{A list of initial weights. If not provided the function will initialize the weights
 automatically by simulating from a Gaussian distribution with small variance.}
+
+\item{grad_method}{The gradient descent method, currently supports momentum ("momentum") or
+Nesterov Accelerated Gradient Descent ("nesterov")}
 
 \item{sparse}{If the input matrix is sparse, setting sparse to TRUE can speed up the code.}
 
@@ -101,4 +105,20 @@ lines(fit_6$cost_test, col = 2)
 pred = predict(fit_6, x_test)
 fit_6$cost_test[200]
 mean(rowSums((y_test - pred)^2))/2
+set.seed(8)
+logistic = function(alpha, beta, x) 1/(1 + exp(-(alpha + beta*x)))
+x_train = matrix(rnorm(300), 100, 3)
+y_train = factor(rbinom(100, 1, prob = logistic(alpha = 0, beta = 1, x_train[,1])) +
+                  rbinom(100, 1, prob = logistic(alpha = 0, beta = 1, x_train[,2])))
+x_test = matrix(rnorm(3000), 1000, 3)
+y_test = factor(rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,1])) +
+                 rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,2])))
+fit_7 = netzuko(x_train, y_train, x_test, y_test, num_hidden = c(3, 3),
+step_size = 0.01, iter = 200, grad_method = "nesterov")
+plot(fit$cost_train, type = "l")
+lines(fit$cost_test, col = 2)
+lines(fit_7$cost_train, col = 1, lty = 1)
+lines(fit_7$cost_test, col = 2, lty = 2)
+legend("topright", legend = c("momentum_train", "nesterov_train", "momentum_train", "nesterov_train"),
+col = c(1, 2, 1, 2), lty = c(1, 1, 2, 2))
 }

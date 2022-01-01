@@ -277,6 +277,8 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #' @param momentum The momentum for the momentum term in gradient descent
 #' @param ini_w A list of initial weights. If not provided the function will initialize the weights
 #' automatically by simulating from a Gaussian distribution with small variance.
+#' @param grad_method The gradient descent method, currently supports momentum ("momentum") or
+#' Nesterov Accelerated Gradient Descent ("nesterov")
 #' @param sparse If the input matrix is sparse, setting sparse to TRUE can speed up the code.
 #' @param verbose Will display fitting progress when set to TRUE
 #' @return A list containing the following elements:
@@ -323,11 +325,28 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #'pred = predict(fit_6, x_test)
 #'fit_6$cost_test[200]
 #'mean(rowSums((y_test - pred)^2))/2
+#'set.seed(8)
+#'logistic = function(alpha, beta, x) 1/(1 + exp(-(alpha + beta*x)))
+#'x_train = matrix(rnorm(300), 100, 3)
+#'y_train = factor(rbinom(100, 1, prob = logistic(alpha = 0, beta = 1, x_train[,1])) +
+#'                   rbinom(100, 1, prob = logistic(alpha = 0, beta = 1, x_train[,2])))
+#'x_test = matrix(rnorm(3000), 1000, 3)
+#'y_test = factor(rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,1])) +
+#'                  rbinom(1000, 1, prob = logistic(alpha = 0, beta = 1, x_test[,2])))
+#'fit_7 = netzuko(x_train, y_train, x_test, y_test, num_hidden = c(3, 3),
+#'step_size = 0.01, iter = 200, grad_method = "nesterov")
+#'plot(fit$cost_train, type = "l")
+#'lines(fit$cost_test, col = 2)
+#'lines(fit_7$cost_train, col = 1, lty = 1)
+#'lines(fit_7$cost_test, col = 2, lty = 2)
+#'legend("topright", legend = c("momentum_train", "nesterov_train", "momentum_train", "nesterov_train"),
+#' col = c(1, 2, 1, 2), lty = c(1, 1, 2, 2))
 #' @export
 #' @import Matrix
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type = NULL, num_hidden = c(2, 2),
                    iter = 300, activation = c("tanh", "logistic"), step_size = 0.01,
-                   lambda = 1e-5, momentum = 0.9, ini_w = NULL, sparse = FALSE, verbose = F) {
+                   lambda = 1e-5, momentum = 0.9, ini_w = NULL, grad_method = c("momentum", "nesterov"),
+                   sparse = FALSE, verbose = F) {
 
   # if (is.vector(x_train) | is.null(dim(x_train))) x_train = matrix(x_train, ncol = 1)
 
@@ -354,6 +373,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   else y_levels = NULL
 
   activation = match.arg(activation)
+  grad_method = match.arg(grad_method)
 
   if ((!is.null(x_test) & is.null(y_test)) | (is.null(x_test) & !is.null(y_test))) {
     stop("x_test and y_test must either be both provided or both NULL")
@@ -412,13 +432,28 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
 
   for (i in 2:iter) {
 
-    for (j in 1:length(w)) {
-      pen_w = lambda * w[[j]]
-      pen_w[1, ] = 0
+    if (grad_method == "nesterov") {
+      w_nesterov = vector("list", length(w))
+      for (k in 1:length(w_nesterov)) w_nesterov[[k]] = w[[k]] + momentum * g_w[[k]]
+      fb_train_nesterov = forward_backward_pass(x_train, y_train, w_nesterov, activation, output_type)
+    }
 
-      g_w[[j]] = momentum*g_w[[j]] - step_size * (grad_w(fb_train$delta[[j]], fb_train$z[[j]]) + pen_w)
+    for (j in 1:length(w)) {
+
+      if (grad_method == "momentum") {
+        pen_w = lambda * w[[j]]
+        pen_w[1, ] = 0
+        g_w[[j]] = momentum*g_w[[j]] - step_size * (grad_w(fb_train$delta[[j]], fb_train$z[[j]]) + pen_w)
+      }
+
+      else if (grad_method == "nesterov") {
+        pen_w = lambda * w_nesterov[[j]]
+        pen_w[1, ] = 0
+        g_w[[j]] = momentum*g_w[[j]] - step_size * (grad_w(fb_train_nesterov$delta[[j]], fb_train_nesterov$z[[j]]) + pen_w)
+      }
 
       w[[j]] = w[[j]] + g_w[[j]]
+
     }
 
     fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
@@ -438,7 +473,8 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   }
 
   fit = list(cost_train = cost_train, cost_test = cost_test, w = w,
-             activation = activation, y_levels = y_levels, output_type = output_type)
+             activation = activation, y_levels = y_levels,
+             output_type = output_type, grad_method = grad_method)
   class(fit) = "netzuko"
   return(fit)
 
