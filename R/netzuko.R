@@ -183,6 +183,49 @@ forward_backward_pass = function(x, y, w, activation, output_type) {
 
 }
 
+#' Compute one forward pass through the neural network
+#'
+#' @param x The inputs
+#' @param y The outputs
+#' @param w The list of weights: 1st element are connection of weights from input to 1st hidden layer,
+#' and the last element are connection weights from the last hidden layer to the outputs
+#' @param output_type The output type: either "numeric" (regression) or "categorical" (prediction).
+#' @return A list with the following elements:
+#' p: the output probabilities
+#' z: the hidden units values
+forward_pass = function(x, y, w, activation, output_type) {
+
+  if (activation == "logistic") {
+    activation_func = logistic_activation
+    grad_func = grad_logistic
+  }
+
+  if (activation == "tanh") {
+    activation_func = tanh_activation
+    grad_func = grad_tanh
+  }
+
+  s_list = vector("list", length(w) - 1)
+  z_list = vector("list", length(w))
+
+  z_list[[1]] = x
+
+  # compute the linear predictors and hidden units over the layers
+
+  for (i in 2:length(z_list)) {
+    s_list[[i-1]] = get_s(z_list[[i-1]], w[[i-1]])
+    z_list[[i]] = cbind(rep(1, nrow(x)), activation_func(s_list[[i-1]]))
+  }
+
+  # compute the output units
+
+  s = get_s(z_list[[length(z_list)]], w[[length(w)]])
+  if (output_type == "categorical") p = soft_max(s)
+  else if (output_type == "numeric") p = s
+
+  return(ls = list(p=p, z = z_list))
+}
+
 #' Make Predictions on a test set
 #'
 #' @param nn_fit A fitted neural network object from netzuko
@@ -337,9 +380,9 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #'step_size = 0.01, iter = 200, grad_method = "nesterov")
 #'plot(fit$cost_train, type = "l")
 #'lines(fit$cost_test, col = 2)
-#'lines(fit_7$cost_train, col = 1, lty = 1)
+#'lines(fit_7$cost_train, col = 1, lty = 2)
 #'lines(fit_7$cost_test, col = 2, lty = 2)
-#'legend("topright", legend = c("momentum_train", "nesterov_train", "momentum_train", "nesterov_train"),
+#'legend("topright", legend = c("momentum_train", "momentum_test", "nesterov_train", "nesterov_test"),
 #' col = c(1, 2, 1, 2), lty = c(1, 1, 2, 2))
 #' @export
 #' @import Matrix
@@ -411,13 +454,25 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
     }
   }
 
-  fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
-  penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
-  cost_train[1] = cost_func(fb_train$p, y_train) + penalty
-
+  if (grad_method == "momentum" ) {
+    fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
+    penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
+    cost_train[1] = cost_func(fb_train$p, y_train) + penalty
+  }
+  else if (grad_method == "nesterov") {
+    fb_train = forward_pass(x_train, y_train, w, activation, output_type)
+    penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
+    cost_train[1] = cost_func(fb_train$p, y_train) + penalty
+  }
   if (!is.null(x_test) & !is.null(y_test)) {
-    fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type)
-    cost_test[1] = cost_func(fb_test$p, y_test)
+    if (grad_method == "momentum") {
+      fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type)
+      cost_test[1] = cost_func(fb_test$p, y_test)
+    }
+    else if (grad_method == "nesterov") {
+      fb_test = forward_pass(x_test, y_test, w, activation, output_type)
+      cost_test[1] = cost_func(fb_test$p, y_test)
+    }
   }
 
   if (verbose) {
@@ -456,13 +511,25 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
 
     }
 
-    fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
-    penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
-    cost_train[i] = cost_func(fb_train$p, y_train) + penalty
-
+    if (grad_method == "momentum" ) {
+      fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
+      penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
+      cost_train[i] = cost_func(fb_train$p, y_train) + penalty
+    }
+    else if (grad_method == "nesterov") {
+      fb_train = forward_pass(x_train, y_train, w, activation, output_type)
+      penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
+      cost_train[i] = cost_func(fb_train$p, y_train) + penalty
+    }
     if (!is.null(x_test) & !is.null(y_test)) {
-      fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type)
-      cost_test[i] = cost_func(fb_test$p, y_test)
+      if (grad_method == "momentum") {
+        fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type)
+        cost_test[i] = cost_func(fb_test$p, y_test)
+      }
+      else if (grad_method == "nesterov") {
+        fb_test = forward_pass(x_test, y_test, w, activation, output_type)
+        cost_test[i] = cost_func(fb_test$p, y_test)
+      }
     }
 
     if (verbose) {

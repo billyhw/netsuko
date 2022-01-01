@@ -117,8 +117,8 @@ fit_7 = netzuko(x_train, y_train, x_test, y_test, num_hidden = c(3, 3),
 step_size = 0.01, iter = 200, grad_method = "nesterov")
 plot(fit$cost_train, type = "l")
 lines(fit$cost_test, col = 2)
-lines(fit_7$cost_train, col = 1, lty = 1)
+lines(fit_7$cost_train, col = 1, lty = 2)
 lines(fit_7$cost_test, col = 2, lty = 2)
-legend("topright", legend = c("momentum_train", "nesterov_train", "momentum_train", "nesterov_train"),
+legend("topright", legend = c("momentum_train", "momentum_test", "nesterov_train", "nesterov_test"),
 col = c(1, 2, 1, 2), lty = c(1, 1, 2, 2))
 }
