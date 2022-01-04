@@ -262,6 +262,7 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #' automatically by simulating from a Gaussian distribution with small variance.
 #' @param sparse If the input matrix is sparse, setting sparse to TRUE can speed up the code.
 #' @param verbose Will display fitting progress when set to TRUE
+#' @param g_hist The gradients at each iteration. For research purpose
 #' @return A list containing the following elements:
 #'
 #' cost_train The training cost by iteration
@@ -374,6 +375,8 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
     }
   }
 
+  w_ini = w
+
   fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
   penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
   cost_train[1] = cost_func(fb_train$p, y_train) + penalty
@@ -389,9 +392,14 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
     else message("iter = 1, training cost = ", round(cost_train[1], 6))
   }
 
+  g_hist = vector("list", num_iter)
+  # z_hist = vector("list", num_iter)
   g_w = vector("list", length(w))
+  grad = vector("list", length(w))
 
   for (j in 1:length(w)) g_w[[j]] = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
+  g_hist[[1]] = NA
+  # z_hist[[1]] = fb_test$z
 
   for (i in 2:iter) {
 
@@ -399,10 +407,13 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
       pen_w = lambda * w[[j]]
       pen_w[1, ] = 0
 
-      g_w[[j]] = momentum*g_w[[j]] - step_size * (grad_w(fb_train$delta[[j]], fb_train$z[[j]]) + pen_w)
+      grad[[j]] = grad_w(fb_train$delta[[j]], fb_train$z[[j]]) + pen_w
+      g_w[[j]] = momentum*g_w[[j]] - step_size * grad[[j]]
 
       w[[j]] = w[[j]] + g_w[[j]]
     }
+
+    g_hist[[i]] = grad
 
     fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
     penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
@@ -413,6 +424,8 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
       cost_test[i] = cost_func(fb_test$p, y_test)
     }
 
+    # z_hist[[i]] = fb_test$z
+
     if (verbose) {
       if (!is.null(x_test) & !is.null(y_test)) message("iter = ", i, " training cost = ", round(cost_train[i], 6),
                                                        " test cost = ", round(cost_test[i], 6))
@@ -420,8 +433,8 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
     }
   }
 
-  fit = list(cost_train = cost_train, cost_test = cost_test, w = w,
-             activation = activation, y_levels = y_levels, output_type = output_type)
+  fit = list(cost_train = cost_train, cost_test = cost_test, w = w, w_ini = w_ini,
+             activation = activation, y_levels = y_levels, output_type = output_type, g_hist = g_hist)
   class(fit) = "netzuko"
   return(fit)
 

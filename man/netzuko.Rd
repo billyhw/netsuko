@@ -51,6 +51,8 @@ automatically by simulating from a Gaussian distribution with small variance.}
 \item{sparse}{If the input matrix is sparse, setting sparse to TRUE can speed up the code.}
 
 \item{verbose}{Will display fitting progress when set to TRUE}
+
+\item{g_hist}{The gradients at each iteration. For research purpose}
 }
 \value{
 A list containing the following elements:
