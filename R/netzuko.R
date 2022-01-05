@@ -120,6 +120,37 @@ least_square = function(p, y) mean(rowSums((y - p)^2))/2
 #' @note For Internal Use
 grad_w = function(delta, x) -crossprod(x, delta)/nrow(x)
 
+#' Initialize weights
+#'
+#' @param x_train The training inputs
+#' @param y_train The training outputs
+#' @param num_hidden Vector with number of hidden units for each hidden layer
+#' @param method The initialization method
+#' @return Initial weights
+#' @note For Internal Use
+initialize_weights = function(x_train, y_train, num_hidden, method) {
+  w = vector("list", length(num_hidden) - 1)
+  for (i in 1:(length(num_hidden) - 1)) {
+    if (method == "gaussian") {
+      w[[i]] = matrix(rnorm((num_hidden[i] + 1)*num_hidden[i+1], sd = 0.1),
+                      num_hidden[i] + 1, num_hidden[i+1])
+    }
+    else if (method == "uniform") {
+      w[[i]] = matrix(runif((num_hidden[i] + 1)*num_hidden[i+1],
+                            min = -1/sqrt(num_hidden[i]), max = 1/sqrt(num_hidden[i])),
+                      num_hidden[i] + 1, num_hidden[i+1])
+    }
+    else if (method == "normalized") {
+      w[[i]] = matrix(runif((num_hidden[i] + 1)*num_hidden[i+1],
+                            min = -sqrt(6/(num_hidden[i] + num_hidden[i+1])),
+                            max = sqrt(6/(num_hidden[i] + num_hidden[i+1]))),
+                      num_hidden[i] + 1, num_hidden[i+1])
+    }
+    w[[i]][1,] = 0
+  }
+  w
+}
+
 #' Compute crucial quantities evaluated from one forward-Backward pass through the neural network
 #'
 #' @param x The inputs
@@ -282,6 +313,7 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #' @param momentum The momentum for the momentum term in gradient descent
 #' @param ini_w A list of initial weights. If not provided the function will initialize the weights
 #' automatically by simulating from a Gaussian distribution with small variance.
+#' @param ini_method The initialization method
 #' @param sparse If the input matrix is sparse, setting sparse to TRUE can speed up the code.
 #' @param verbose Will display fitting progress when set to TRUE
 #' @param g_hist The gradients at each iteration. For research purpose
@@ -333,7 +365,8 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #' @import Matrix
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type = NULL, num_hidden = c(2, 2),
                    iter = 300, activation = c("tanh", "relu", "logistic"), step_size = 0.01,
-                   lambda = 1e-5, momentum = 0.9, ini_w = NULL, sparse = FALSE, verbose = F) {
+                   lambda = 1e-5, momentum = 0.9, ini_w = NULL, ini_method = c("gaussian", "uniform", "normalized"),
+                   sparse = FALSE, verbose = F) {
 
   # if (is.vector(x_train) | is.null(dim(x_train))) x_train = matrix(x_train, ncol = 1)
 
@@ -360,6 +393,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   else y_levels = NULL
 
   activation = match.arg(activation)
+  ini_method = match.arg(ini_method)
 
   if ((!is.null(x_test) & is.null(y_test)) | (is.null(x_test) & !is.null(y_test))) {
     stop("x_test and y_test must either be both provided or both NULL")
@@ -389,13 +423,17 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
     }
   }
 
-  if (is.null(ini_w)) {
-    num_hidden = c(ncol(x_train)-1, num_hidden, ncol(y_train))
-    w = vector("list", length(num_hidden) - 1)
-    for (i in 1:(length(num_hidden) - 1)) {
-      w[[i]] = matrix(rnorm((num_hidden[i] + 1)*num_hidden[i+1], sd = 0.1), num_hidden[i] + 1, num_hidden[i+1])
-    }
-  }
+  # if (is.null(ini_w)) {
+  #   num_hidden = c(ncol(x_train)-1, num_hidden, ncol(y_train))
+  #   w = vector("list", length(num_hidden) - 1)
+  #   for (i in 1:(length(num_hidden) - 1)) {
+  #     w[[i]] = matrix(rnorm((num_hidden[i] + 1)*num_hidden[i+1], sd = 0.1), num_hidden[i] + 1, num_hidden[i+1])
+  #   }
+  # }
+
+  num_hidden = c(ncol(x_train)-1, num_hidden, ncol(y_train))
+
+  if (is.null(ini_w)) w = initialize_weights(x_train, y_train, num_hidden, method = ini_method)
 
   w_ini = w
 

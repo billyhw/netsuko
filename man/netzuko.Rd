@@ -17,6 +17,7 @@ netzuko(
   lambda = 1e-05,
   momentum = 0.9,
   ini_w = NULL,
+  ini_method = c("gaussian", "uniform", "normalized"),
   sparse = FALSE,
   verbose = F
 )
@@ -49,6 +50,8 @@ a neural network with 2 hidden layers with 2 hidden units in each layer.}
 
 \item{ini_w}{A list of initial weights. If not provided the function will initialize the weights
 automatically by simulating from a Gaussian distribution with small variance.}
+
+\item{ini_method}{The initialization method}
 
 \item{sparse}{If the input matrix is sparse, setting sparse to TRUE can speed up the code.}
 
