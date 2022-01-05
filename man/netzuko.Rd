@@ -12,7 +12,7 @@ netzuko(
   output_type = NULL,
   num_hidden = c(2, 2),
   iter = 300,
-  activation = c("tanh", "logistic"),
+  activation = c("tanh", "relu", "logistic"),
   step_size = 0.01,
   lambda = 1e-05,
   momentum = 0.9,
@@ -38,6 +38,8 @@ values equal the number of hidden units in the corresponding layer. The default 
 a neural network with 2 hidden layers with 2 hidden units in each layer.}
 
 \item{iter}{The number of iterations of gradient descent}
+
+\item{activation}{The hidden unit activation function (Tanh, ReLU, or Logistic)}
 
 \item{step_size}{The step size for gradient descent}
 

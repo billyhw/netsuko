@@ -46,6 +46,14 @@ logistic_activation = function(s) 1/(1 + exp(-s))
 #' @note For Internal Use
 tanh_activation = function(s) tanh(s)
 
+#' Compute ReLU activation given linear predictors
+#'
+#' @param s The linear predictors
+#' @return The unit activations
+#' @note For Internal Use
+relu_activation = function(s) s*(s > 0)
+
+
 #' Compute errors from output to the last hidden layer
 #'
 #' @param y The outputs
@@ -79,6 +87,13 @@ grad_logistic = function(s) logistic_activation(s)*(1-logistic_activation(s))
 #' @return The gradient of logistic activation evaluated at s
 #' @note For Internal Use
 grad_tanh = function(s) 1-tanh_activation(s)^2
+
+#' Compute the gradient of the relu activation function
+#'
+#' @param s The linear predictors
+#' @return The gradient of logistic activation evaluated at s
+#' @note For Internal Use. We set gradient at 0 to be 0.
+grad_relu = function(s) s > 0
 
 #' Compute the negative cross-entropy for multi-class classification
 #'
@@ -126,6 +141,11 @@ forward_backward_pass = function(x, y, w, activation, output_type) {
   if (activation == "tanh") {
     activation_func = tanh_activation
     grad_func = grad_tanh
+  }
+
+  if (activation == "relu") {
+    activation_func = relu_activation
+    grad_func = grad_relu
   }
 
   s_list = vector("list", length(w) - 1)
@@ -221,6 +241,7 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 
   if (activation == "logistic") activation_func = logistic_activation
   if (activation == "tanh") activation_func = tanh_activation
+  if (activation == "relu") activation_func = relu_activation
 
   s_list = vector("list", length(w) - 1)
   z_list = vector("list", length(w))
@@ -255,6 +276,7 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #' values equal the number of hidden units in the corresponding layer. The default c(2, 2) will fit
 #' a neural network with 2 hidden layers with 2 hidden units in each layer.
 #' @param iter The number of iterations of gradient descent
+#' @param activation The hidden unit activation function (Tanh, ReLU, or Logistic)
 #' @param step_size The step size for gradient descent
 #' @param lambda The weight decay parameter
 #' @param momentum The momentum for the momentum term in gradient descent
@@ -310,7 +332,7 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #' @export
 #' @import Matrix
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type = NULL, num_hidden = c(2, 2),
-                   iter = 300, activation = c("tanh", "logistic"), step_size = 0.01,
+                   iter = 300, activation = c("tanh", "relu", "logistic"), step_size = 0.01,
                    lambda = 1e-5, momentum = 0.9, ini_w = NULL, sparse = FALSE, verbose = F) {
 
   # if (is.vector(x_train) | is.null(dim(x_train))) x_train = matrix(x_train, ncol = 1)
