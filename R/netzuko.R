@@ -365,7 +365,7 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #' @import Matrix
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type = NULL, num_hidden = c(2, 2),
                    iter = 300, activation = c("tanh", "relu", "logistic"), step_size = 0.01,
-                   lambda = 1e-5, momentum = 0.9, ini_w = NULL, ini_method = c("gaussian", "uniform", "normalized"),
+                   lambda = 1e-5, momentum = 0.9, ini_w = NULL, ini_method = c("normalized", "uniform", "gaussian"),
                    sparse = FALSE, verbose = F) {
 
   # if (is.vector(x_train) | is.null(dim(x_train))) x_train = matrix(x_train, ncol = 1)
