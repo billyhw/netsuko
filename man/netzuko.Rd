@@ -17,7 +17,7 @@ netzuko(
   lambda = 1e-05,
   momentum = 0.9,
   ini_w = NULL,
-  ini_method = c("gaussian", "uniform", "normalized"),
+  ini_method = c("normalized", "uniform", "gaussian"),
   sparse = FALSE,
   verbose = F
 )
