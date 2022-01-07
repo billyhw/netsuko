@@ -20,7 +20,8 @@ netzuko(
   ini_method = c("normalized", "uniform", "gaussian"),
   scale = FALSE,
   sparse = FALSE,
-  verbose = F
+  verbose = F,
+  keep_grad = F
 )
 }
 \arguments{
@@ -58,7 +59,7 @@ automatically by simulating from a Gaussian distribution with small variance.}
 
 \item{verbose}{Will display fitting progress when set to TRUE}
 
-\item{g_hist}{The gradients at each iteration. For research purpose}
+\item{keep_grad}{Save the gradients at each iteration? (For research purpose)}
 }
 \value{
 A list containing the following elements:

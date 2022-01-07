@@ -338,7 +338,7 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #' @param ini_method The initialization method
 #' @param sparse If the input matrix is sparse, setting sparse to TRUE can speed up the code.
 #' @param verbose Will display fitting progress when set to TRUE
-#' @param g_hist The gradients at each iteration. For research purpose
+#' @param keep_grad Save the gradients at each iteration? (For research purpose)
 #' @return A list containing the following elements:
 #'
 #' cost_train The training cost by iteration
@@ -395,7 +395,7 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type = NULL, num_hidden = c(2, 2),
                    iter = 300, activation = c("tanh", "relu", "logistic"), step_size = 0.01,
                    lambda = 1e-5, momentum = 0.9, ini_w = NULL, ini_method = c("normalized", "uniform", "gaussian"),
-                   scale = FALSE, sparse = FALSE, verbose = F) {
+                   scale = FALSE, sparse = FALSE, verbose = F, keep_grad = F) {
 
   # if (is.vector(x_train) | is.null(dim(x_train))) x_train = matrix(x_train, ncol = 1)
 
@@ -507,13 +507,14 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
     else message("iter = 1, training cost = ", round(cost_train[1], 6))
   }
 
-  g_hist = vector("list", num_iter)
+  g_hist = NULL
+  if (keep_grad) g_hist = vector("list", num_iter)
   # z_hist = vector("list", num_iter)
   g_w = vector("list", length(w))
   grad = vector("list", length(w))
 
   for (j in 1:length(w)) g_w[[j]] = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
-  g_hist[[1]] = NA
+  if (keep_grad) g_hist[[1]] = NA
   # z_hist[[1]] = fb_test$z
 
   for (i in 2:iter) {
@@ -528,7 +529,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
       w[[j]] = w[[j]] + g_w[[j]]
     }
 
-    g_hist[[i]] = grad
+    if (keep_grad) g_hist[[i]] = grad
 
     fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
     penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
