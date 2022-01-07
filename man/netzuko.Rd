@@ -12,12 +12,16 @@ netzuko(
   output_type = NULL,
   num_hidden = c(2, 2),
   iter = 300,
-  activation = c("tanh", "logistic"),
+  activation = c("tanh", "relu", "logistic"),
   step_size = 0.01,
   lambda = 1e-05,
   momentum = 0.9,
   ini_w = NULL,
+<<<<<<< HEAD
   scale = FALSE,
+=======
+  ini_method = c("normalized", "uniform", "gaussian"),
+>>>>>>> vanishing_gradient
   sparse = FALSE,
   verbose = F
 )
@@ -40,6 +44,8 @@ a neural network with 2 hidden layers with 2 hidden units in each layer.}
 
 \item{iter}{The number of iterations of gradient descent}
 
+\item{activation}{The hidden unit activation function (Tanh, ReLU, or Logistic)}
+
 \item{step_size}{The step size for gradient descent}
 
 \item{lambda}{The weight decay parameter}
@@ -49,9 +55,13 @@ a neural network with 2 hidden layers with 2 hidden units in each layer.}
 \item{ini_w}{A list of initial weights. If not provided the function will initialize the weights
 automatically by simulating from a Gaussian distribution with small variance.}
 
+\item{ini_method}{The initialization method}
+
 \item{sparse}{If the input matrix is sparse, setting sparse to TRUE can speed up the code.}
 
 \item{verbose}{Will display fitting progress when set to TRUE}
+
+\item{g_hist}{The gradients at each iteration. For research purpose}
 }
 \value{
 A list containing the following elements:

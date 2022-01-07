@@ -46,6 +46,14 @@ logistic_activation = function(s) 1/(1 + exp(-s))
 #' @note For Internal Use
 tanh_activation = function(s) tanh(s)
 
+#' Compute ReLU activation given linear predictors
+#'
+#' @param s The linear predictors
+#' @return The unit activations
+#' @note For Internal Use
+relu_activation = function(s) s*(s > 0)
+
+
 #' Compute errors from output to the last hidden layer
 #'
 #' @param y The outputs
@@ -79,6 +87,13 @@ grad_logistic = function(s) logistic_activation(s)*(1-logistic_activation(s))
 #' @return The gradient of logistic activation evaluated at s
 #' @note For Internal Use
 grad_tanh = function(s) 1-tanh_activation(s)^2
+
+#' Compute the gradient of the relu activation function
+#'
+#' @param s The linear predictors
+#' @return The gradient of logistic activation evaluated at s
+#' @note For Internal Use. We set gradient at 0 to be 0.
+grad_relu = function(s) s > 0
 
 #' Compute the negative cross-entropy for multi-class classification
 #'
@@ -121,6 +136,37 @@ scale_matrix = function(x, mean_x = NULL, sd_x = NULL, intercept = F) {
   return(ls = list(x = x_scaled, mean_x = mean_x, sd_x = sd_x))
 }
 
+#' Initialize weights
+#'
+#' @param x_train The training inputs
+#' @param y_train The training outputs
+#' @param num_hidden Vector with number of hidden units for each hidden layer
+#' @param method The initialization method
+#' @return Initial weights
+#' @note For Internal Use
+initialize_weights = function(x_train, y_train, num_hidden, method) {
+  w = vector("list", length(num_hidden) - 1)
+  for (i in 1:(length(num_hidden) - 1)) {
+    if (method == "gaussian") {
+      w[[i]] = matrix(rnorm((num_hidden[i] + 1)*num_hidden[i+1], sd = 0.1),
+                      num_hidden[i] + 1, num_hidden[i+1])
+    }
+    else if (method == "uniform") {
+      w[[i]] = matrix(runif((num_hidden[i] + 1)*num_hidden[i+1],
+                            min = -1/sqrt(num_hidden[i]), max = 1/sqrt(num_hidden[i])),
+                      num_hidden[i] + 1, num_hidden[i+1])
+    }
+    else if (method == "normalized") {
+      w[[i]] = matrix(runif((num_hidden[i] + 1)*num_hidden[i+1],
+                            min = -sqrt(6/(num_hidden[i] + num_hidden[i+1])),
+                            max = sqrt(6/(num_hidden[i] + num_hidden[i+1]))),
+                      num_hidden[i] + 1, num_hidden[i+1])
+    }
+    w[[i]][1,] = 0
+  }
+  w
+}
+
 #' Compute crucial quantities evaluated from one forward-Backward pass through the neural network
 #'
 #' @param x The inputs
@@ -142,6 +188,11 @@ forward_backward_pass = function(x, y, w, activation, output_type) {
   if (activation == "tanh") {
     activation_func = tanh_activation
     grad_func = grad_tanh
+  }
+
+  if (activation == "relu") {
+    activation_func = relu_activation
+    grad_func = grad_relu
   }
 
   s_list = vector("list", length(w) - 1)
@@ -240,6 +291,7 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 
   if (activation == "logistic") activation_func = logistic_activation
   if (activation == "tanh") activation_func = tanh_activation
+  if (activation == "relu") activation_func = relu_activation
 
   s_list = vector("list", length(w) - 1)
   z_list = vector("list", length(w))
@@ -277,13 +329,16 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #' values equal the number of hidden units in the corresponding layer. The default c(2, 2) will fit
 #' a neural network with 2 hidden layers with 2 hidden units in each layer.
 #' @param iter The number of iterations of gradient descent
+#' @param activation The hidden unit activation function (Tanh, ReLU, or Logistic)
 #' @param step_size The step size for gradient descent
 #' @param lambda The weight decay parameter
 #' @param momentum The momentum for the momentum term in gradient descent
 #' @param ini_w A list of initial weights. If not provided the function will initialize the weights
 #' automatically by simulating from a Gaussian distribution with small variance.
+#' @param ini_method The initialization method
 #' @param sparse If the input matrix is sparse, setting sparse to TRUE can speed up the code.
 #' @param verbose Will display fitting progress when set to TRUE
+#' @param g_hist The gradients at each iteration. For research purpose
 #' @return A list containing the following elements:
 #'
 #' cost_train The training cost by iteration
@@ -338,8 +393,9 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #' @export
 #' @import Matrix
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type = NULL, num_hidden = c(2, 2),
-                   iter = 300, activation = c("tanh", "logistic"), step_size = 0.01,
-                   lambda = 1e-5, momentum = 0.9, ini_w = NULL, scale = FALSE, sparse = FALSE, verbose = F) {
+                   iter = 300, activation = c("tanh", "relu", "logistic"), step_size = 0.01,
+                   lambda = 1e-5, momentum = 0.9, ini_w = NULL, ini_method = c("normalized", "uniform", "gaussian"),
+                   scale = FALSE, sparse = FALSE, verbose = F) {
 
   # if (is.vector(x_train) | is.null(dim(x_train))) x_train = matrix(x_train, ncol = 1)
 
@@ -366,6 +422,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   else y_levels = NULL
 
   activation = match.arg(activation)
+  ini_method = match.arg(ini_method)
 
   if ((!is.null(x_test) & is.null(y_test)) | (is.null(x_test) & !is.null(y_test))) {
     stop("x_test and y_test must either be both provided or both NULL")
@@ -421,13 +478,19 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
     }
   }
 
-  if (is.null(ini_w)) {
-    num_hidden = c(ncol(x_train)-1, num_hidden, ncol(y_train))
-    w = vector("list", length(num_hidden) - 1)
-    for (i in 1:(length(num_hidden) - 1)) {
-      w[[i]] = matrix(rnorm((num_hidden[i] + 1)*num_hidden[i+1], sd = 0.1), num_hidden[i] + 1, num_hidden[i+1])
-    }
-  }
+  # if (is.null(ini_w)) {
+  #   num_hidden = c(ncol(x_train)-1, num_hidden, ncol(y_train))
+  #   w = vector("list", length(num_hidden) - 1)
+  #   for (i in 1:(length(num_hidden) - 1)) {
+  #     w[[i]] = matrix(rnorm((num_hidden[i] + 1)*num_hidden[i+1], sd = 0.1), num_hidden[i] + 1, num_hidden[i+1])
+  #   }
+  # }
+
+  num_hidden = c(ncol(x_train)-1, num_hidden, ncol(y_train))
+
+  if (is.null(ini_w)) w = initialize_weights(x_train, y_train, num_hidden, method = ini_method)
+
+  w_ini = w
 
   fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
   penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
@@ -444,9 +507,14 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
     else message("iter = 1, training cost = ", round(cost_train[1], 6))
   }
 
+  g_hist = vector("list", num_iter)
+  # z_hist = vector("list", num_iter)
   g_w = vector("list", length(w))
+  grad = vector("list", length(w))
 
   for (j in 1:length(w)) g_w[[j]] = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
+  g_hist[[1]] = NA
+  # z_hist[[1]] = fb_test$z
 
   for (i in 2:iter) {
 
@@ -454,10 +522,13 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
       pen_w = lambda * w[[j]]
       pen_w[1, ] = 0
 
-      g_w[[j]] = momentum*g_w[[j]] - step_size * (grad_w(fb_train$delta[[j]], fb_train$z[[j]]) + pen_w)
+      grad[[j]] = grad_w(fb_train$delta[[j]], fb_train$z[[j]]) + pen_w
+      g_w[[j]] = momentum*g_w[[j]] - step_size * grad[[j]]
 
       w[[j]] = w[[j]] + g_w[[j]]
     }
+
+    g_hist[[i]] = grad
 
     fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
     penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
@@ -468,6 +539,8 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
       cost_test[i] = cost_func(fb_test$p, y_test)
     }
 
+    # z_hist[[i]] = fb_test$z
+
     if (verbose) {
       if (!is.null(x_test) & !is.null(y_test)) message("iter = ", i, " training cost = ", round(cost_train[i], 6),
                                                        " test cost = ", round(cost_test[i], 6))
@@ -475,9 +548,10 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
     }
   }
 
-  fit = list(cost_train = cost_train, cost_test = cost_test, w = w,
-             activation = activation, y_levels = y_levels, output_type = output_type,
+  fit = list(cost_train = cost_train, cost_test = cost_test, w = w, w_ini = w_ini,
+             activation = activation, y_levels = y_levels, output_type = output_type, g_hist = g_hist,
              mean_x = mean_x, mean_y = mean_y, sd_x = sd_x, sd_y = sd_y)
+
   class(fit) = "netzuko"
   return(fit)
 
