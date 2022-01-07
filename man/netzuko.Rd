@@ -17,11 +17,8 @@ netzuko(
   lambda = 1e-05,
   momentum = 0.9,
   ini_w = NULL,
-<<<<<<< HEAD
-  scale = FALSE,
-=======
   ini_method = c("normalized", "uniform", "gaussian"),
->>>>>>> vanishing_gradient
+  scale = FALSE,
   sparse = FALSE,
   verbose = F
 )
