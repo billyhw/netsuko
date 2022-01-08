@@ -508,7 +508,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   }
 
   g_hist = NULL
-  if (keep_grad) g_hist = vector("list", num_iter)
+  if (keep_grad) g_hist = vector("list", iter)
   # z_hist = vector("list", num_iter)
   g_w = vector("list", length(w))
   grad = vector("list", length(w))
