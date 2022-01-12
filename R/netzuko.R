@@ -229,7 +229,7 @@ forward_backward_pass = function(x, y, w, activation, output_type) {
     delta_list[[i]] = get_error_hidden(delta_list[[i+1]], grad_s, w[[i+1]])
   }
 
-  return(ls = list(p=p, delta = delta_list, z = z_list))
+  return(ls = list(p=p, delta = delta_list, z = z_list, s = s_list))
 
 }
 
@@ -488,9 +488,11 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
 
   num_hidden = c(ncol(x_train)-1, num_hidden, ncol(y_train))
 
-  if (is.null(ini_w)) w = initialize_weights(x_train, y_train, num_hidden, method = ini_method)
-
-  w_ini = w
+  if (is.null(ini_w)) {
+    w = initialize_weights(x_train, y_train, num_hidden, method = ini_method)
+    ini_w = w
+  }
+  else w = ini_w
 
   fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
   penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
@@ -549,8 +551,9 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
     }
   }
 
-  fit = list(cost_train = cost_train, cost_test = cost_test, w = w, w_ini = w_ini,
+  fit = list(cost_train = cost_train, cost_test = cost_test, w = w, ini_w = ini_w,
              activation = activation, y_levels = y_levels, output_type = output_type, g_hist = g_hist,
+             z = fb_train$z, s = fb_train$s,
              mean_x = mean_x, mean_y = mean_y, sd_x = sd_x, sd_y = sd_y)
 
   class(fit) = "netzuko"
