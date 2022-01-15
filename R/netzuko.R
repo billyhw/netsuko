@@ -53,7 +53,6 @@ tanh_activation = function(s) tanh(s)
 #' @note For Internal Use
 relu_activation = function(s) s*(s > 0)
 
-
 #' Compute errors from output to the last hidden layer
 #'
 #' @param y The outputs
@@ -102,6 +101,14 @@ grad_relu = function(s) s > 0
 #' @return The negative cross-entropy
 #' @note For Internal Use
 cross_entropy = function(p, y) -mean(rowSums(y*log(p)))
+
+#' Compute the KL-divergence for logistic output
+#'
+#' @param y The outputs
+#' @param p The predictions
+#' @return The KL divergence
+#' @note For Internal Use
+kl_divergence = function(p, y) -mean(rowSums(y*log(p) + (1-y)*log(1-p)))
 
 #' Compute 1/2 least square error for regression
 #'
@@ -167,6 +174,32 @@ initialize_weights = function(x_train, y_train, num_hidden, method) {
   w
 }
 
+#' Initialize weights by Stacking Autoencoders
+#'
+#' @param x_train The training inputs
+#' @param y_train The training outputs
+#' @param num_hidden Vector with number of hidden units for each hidden layer
+#' @param method The initialization method
+#' @return Initial weights
+#' @note For Internal Use
+pretrain = function(x_train, y_train, num_hidden,
+                    iter = 300, step_size = 0.01,
+                    lambda = 1e-5, momentum = 0.9,
+                    ini_method = c("normalized", "uniform", "gaussian"),
+                    sparse = FALSE, verbose = F) {
+  w = initialize_weights(x_train, y_train, num_hidden, ini_method)
+  pred = x_train
+  for (i in 1:(length(w) - 1)) {
+    if (verbose) message("Pretraining layer", i)
+    tmp = netzuko(pred, pred, num_hidden = ncol(w[[i]]),
+                  iter = iter, step_size = step_size, lambda = lambda, momentum = momentum,
+                  output = "logistic", activation = "logistic", verbose = verbose)
+    pred = as.matrix(predict(tmp, as.matrix(pred), type = "hidden")[[2]][,-1])
+    w[[i]] = tmp$w[[1]]
+  }
+  w
+}
+
 #' Compute crucial quantities evaluated from one forward-Backward pass through the neural network
 #'
 #' @param x The inputs
@@ -211,6 +244,7 @@ forward_backward_pass = function(x, y, w, activation, output_type) {
 
   s = get_s(z_list[[length(z_list)]], w[[length(w)]])
   if (output_type == "categorical") p = soft_max(s)
+  if (output_type == "logistic") p = logistic_activation(s)
   else if (output_type == "numeric") p = s
 
   # delta_list stores the delta from
@@ -275,7 +309,7 @@ forward_backward_pass = function(x, y, w, activation, output_type) {
 #' mean(pred_4 == mnist$y_train[1001:2000])
 #' }
 #' @export
-predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
+predict.netzuko = function(nn_fit, newdata, type = c("prob", "class", "hidden")) {
 
   # if (is.vector(newdata) | is.null(dim(newdata))) newdata = matrix(newdata, ncol = 1)
 
@@ -303,14 +337,17 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
     z_list[[i]] = cbind(rep(1, nrow(newdata)), activation_func(s_list[[i-1]]))
   }
 
+  if (type == "hidden") return(z_list)
+
   s = get_s(z_list[[length(z_list)]], w[[length(w)]])
   if (nn_fit$output_type == "categorical") p = soft_max(s)
+  if (nn_fit$output_type == "logistic") p = logistic_activation(s)
   else if (nn_fit$output_type == "numeric") {
     if (is.null(nn_fit$mean_y) | is.null(nn_fit$sd_y)) return(s)
     else return(t(t(s)*nn_fit$sd_y + nn_fit$mean_y))
   }
 
-  if (type == "prob") return(p)
+  if (type == "prob" | nn_fit$output_type == "logistic") return(p)
   else if (type == "class") {
     max_ind = apply(p, 1, which.max)
     return(factor(nn_fit$y_levels[max_ind], levels = nn_fit$y_levels))
@@ -393,8 +430,9 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 #' @export
 #' @import Matrix
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type = NULL, num_hidden = c(2, 2),
-                   iter = 300, activation = c("tanh", "relu", "logistic"), step_size = 0.01,
-                   lambda = 1e-5, momentum = 0.9, ini_w = NULL, ini_method = c("normalized", "uniform", "gaussian"),
+                   iter = 300, activation = c("relu", "tanh", "logistic"), step_size = 0.01,
+                   lambda = 1e-5, momentum = 0.9, ini_w = NULL,
+                   ini_method = c("normalized", "uniform", "gaussian", "pretrain"),
                    scale = FALSE, sparse = FALSE, verbose = F, keep_grad = F) {
 
   # if (is.vector(x_train) | is.null(dim(x_train))) x_train = matrix(x_train, ncol = 1)
@@ -408,10 +446,11 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
       output_type = "categorical"
       message("output_type not specified, set to categorical")
     }
-    else stop("output_type must be one of numeric or categorical")
+    else stop("output_type must be one of numeric, categorical, or logistic")
   }
 
   if (output_type == "categorical") cost_func = cross_entropy
+  else if (output_type == "logistic") cost_func = kl_divergence
   else if (output_type == "numeric") {
     cost_func = least_square
     # if (is.vector(y_train) | is.null(dim(y_train))) y_train = matrix(y_train, ncol = 1)
@@ -489,7 +528,24 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   num_hidden = c(ncol(x_train)-1, num_hidden, ncol(y_train))
 
   if (is.null(ini_w)) {
-    w = initialize_weights(x_train, y_train, num_hidden, method = ini_method)
+    if (ini_method == "pretrain") {
+      if (activation != "logistic") {
+      stop("pretraining currently only supports logistic activation,
+           please set activation to logistic and restart")
+      }
+      else if (min(x_train) < 0 | max(x_train > 1)) {
+        stop("pretraining currently only supports inputs with range between (0, 1),
+             please rescale inputs if appropriate")
+      }
+      else {
+        w = pretrain(x_train[,-1], y_train, num_hidden,
+                   iter = iter, step_size = step_size,
+                   lambda = lambda, momentum = momentum,
+                   ini_method = "normalized",
+                   sparse = sparse, verbose = verbose)
+      }
+    }
+    else w = initialize_weights(x_train, y_train, num_hidden, method = ini_method)
     ini_w = w
   }
   else w = ini_w

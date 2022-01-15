@@ -4,7 +4,7 @@
 \alias{predict.netzuko}
 \title{Make Predictions on a test set}
 \usage{
-\method{predict}{netzuko}(nn_fit, newdata, type = c("prob", "class"))
+\method{predict}{netzuko}(nn_fit, newdata, type = c("prob", "class", "hidden"))
 }
 \arguments{
 \item{nn_fit}{A fitted neural network object from netzuko}
