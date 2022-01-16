@@ -188,9 +188,9 @@ pretrain = function(x_train, y_train, num_hidden,
                     ini_method = c("normalized", "uniform", "gaussian"),
                     sparse = FALSE, verbose = F) {
   w = initialize_weights(x_train, y_train, num_hidden, ini_method)
-  pred = x_train
+  pred = as.matrix(x_train)
   for (i in 1:(length(w) - 1)) {
-    if (verbose) message("Pretraining layer", i)
+    if (verbose) message("Pretraining layer ", i)
     tmp = netzuko(pred, pred, num_hidden = ncol(w[[i]]),
                   iter = iter, step_size = step_size, lambda = lambda, momentum = momentum,
                   output = "logistic", activation = "logistic", verbose = verbose)
