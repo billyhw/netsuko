@@ -609,7 +609,6 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
 
   fit = list(cost_train = cost_train, cost_test = cost_test, w = w, ini_w = ini_w,
              activation = activation, y_levels = y_levels, output_type = output_type, g_hist = g_hist,
-             z = fb_train$z, s = fb_train$s,
              mean_x = mean_x, mean_y = mean_y, sd_x = sd_x, sd_y = sd_y)
 
   class(fit) = "netzuko"
