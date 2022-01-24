@@ -16,6 +16,8 @@ netzuko(
   step_size = 0.01,
   lambda = 1e-05,
   momentum = 0.9,
+  dropout = FALSE,
+  retain_rate = 0.5,
   ini_w = NULL,
   ini_method = c("normalized", "uniform", "gaussian", "pretrain"),
   scale = FALSE,

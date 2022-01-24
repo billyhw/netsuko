@@ -207,11 +207,16 @@ pretrain = function(x_train, y_train, num_hidden,
 #' @param w The list of weights: 1st element are connection of weights from input to 1st hidden layer,
 #' and the last element are connection weights from the last hidden layer to the outputs
 #' @param output_type The output type: either "numeric" (regression) or "categorical" (prediction).
+#' @param dropout Boolean to indicate whether dropout is used
+#' @param retain_rate The proportion of units to retain during dropout
+#' @param forward_only If TRUE the function will only evaluate the forward pass
 #' @return A list containing the following elements:
 #' p: the output probabilities
 #' delta: a list of errors backpropagated throught the layers
 #' z: the hidden units values
-forward_backward_pass = function(x, y, w, activation, output_type) {
+forward_backward_pass = function(x, y, w, activation, output_type,
+                                 dropout = FALSE, retain_rate = NULL,
+                                 forward_only = FALSE) {
 
   if (activation == "logistic") {
     activation_func = logistic_activation
@@ -236,7 +241,14 @@ forward_backward_pass = function(x, y, w, activation, output_type) {
   # compute the linear predictors and hidden units over the layers
 
   for (i in 2:length(z_list)) {
-    s_list[[i-1]] = get_s(z_list[[i-1]], w[[i-1]])
+    if (dropout) {
+      r = rbinom(ncol(z_list[[i-1]]), 1, retain_rate)
+      r[1] = 1
+      z_dropout = z_list[[i-1]]
+      z_dropout[, which(r == 0)] = 0
+      s_list[[i-1]] = get_s(z_dropout, w[[i-1]])
+    }
+    else s_list[[i-1]] = get_s(z_list[[i-1]], w[[i-1]])
     z_list[[i]] = cbind(rep(1, nrow(x)), activation_func(s_list[[i-1]]))
   }
 
@@ -246,6 +258,8 @@ forward_backward_pass = function(x, y, w, activation, output_type) {
   if (output_type == "categorical") p = soft_max(s)
   if (output_type == "logistic") p = logistic_activation(s)
   else if (output_type == "numeric") p = s
+
+  if (forward_only) return(ls = list(p=p, delta = NULL, z = z_list, s = s_list))
 
   # delta_list stores the delta from
   # output -> last hidden layer -> 2nd last hidden layer etc.
@@ -322,6 +336,13 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class", "hidden"))
 
   activation = nn_fit$activation
   w = nn_fit$w
+  if (nn_fit$dropout) {
+    retain_rate = nn_fit$retain_rate
+    w = lapply(w, function(x) {
+      x[-1,] = retain_rate*x[-1,]
+      x
+    })
+  }
 
   if (activation == "logistic") activation_func = logistic_activation
   if (activation == "tanh") activation_func = tanh_activation
@@ -431,7 +452,7 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class", "hidden"))
 #' @import Matrix
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type = NULL, num_hidden = c(2, 2),
                    iter = 300, activation = c("relu", "tanh", "logistic"), step_size = 0.01,
-                   lambda = 1e-5, momentum = 0.9, ini_w = NULL,
+                   lambda = 1e-5, momentum = 0.9, dropout = FALSE, retain_rate = 0.5, ini_w = NULL,
                    ini_method = c("normalized", "uniform", "gaussian", "pretrain"),
                    scale = FALSE, sparse = FALSE, verbose = F, keep_grad = F) {
 
@@ -550,12 +571,14 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   }
   else w = ini_w
 
-  fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
+  if (dropout) fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type, forward_only = T)
+  else fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
   penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
   cost_train[1] = cost_func(fb_train$p, y_train) + penalty
 
   if (!is.null(x_test) & !is.null(y_test)) {
-    fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type)
+    if (dropout) fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type, forward_only = T)
+    else fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type, forward_only = T)
     cost_test[1] = cost_func(fb_test$p, y_test)
   }
 
@@ -581,7 +604,12 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
       pen_w = lambda * w[[j]]
       pen_w[1, ] = 0
 
-      grad[[j]] = grad_w(fb_train$delta[[j]], fb_train$z[[j]]) + pen_w
+      if (dropout) {
+        fb_train_dropout = forward_backward_pass(x_train, y_train, w, activation, output_type,
+                                                 dropout = T, retain_rate = retain_rate)
+        grad[[j]] = grad_w(fb_train_dropout$delta[[j]], fb_train_dropout$z[[j]]) + pen_w
+      }
+      else grad[[j]] = grad_w(fb_train$delta[[j]], fb_train$z[[j]]) + pen_w
       g_w[[j]] = momentum*g_w[[j]] - step_size * grad[[j]]
 
       w[[j]] = w[[j]] + g_w[[j]]
@@ -589,12 +617,20 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
 
     if (keep_grad) g_hist[[i]] = grad
 
-    fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
+    if (dropout) {
+      w_adjust = lapply(w, function(x) {
+        x[-1,] = retain_rate*x[-1,]
+        x
+      })
+      fb_train = forward_backward_pass(x_train, y_train, w_adjust, activation, output_type, forward_only = T)
+    }
+    else fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
     penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
     cost_train[i] = cost_func(fb_train$p, y_train) + penalty
 
     if (!is.null(x_test) & !is.null(y_test)) {
-      fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type)
+      if (dropout) fb_test = forward_backward_pass(x_test, y_test, w_adjust, activation, output_type, forward_only = T)
+      else fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type, forward_only = T)
       cost_test[i] = cost_func(fb_test$p, y_test)
     }
 
@@ -609,7 +645,8 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
 
   fit = list(cost_train = cost_train, cost_test = cost_test, w = w, ini_w = ini_w,
              activation = activation, y_levels = y_levels, output_type = output_type, g_hist = g_hist,
-             mean_x = mean_x, mean_y = mean_y, sd_x = sd_x, sd_y = sd_y)
+             mean_x = mean_x, mean_y = mean_y, sd_x = sd_x, sd_y = sd_y,
+             dropout = dropout, retain_rate = retain_rate)
 
   class(fit) = "netzuko"
   return(fit)

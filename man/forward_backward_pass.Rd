@@ -4,7 +4,16 @@
 \alias{forward_backward_pass}
 \title{Compute crucial quantities evaluated from one forward-Backward pass through the neural network}
 \usage{
-forward_backward_pass(x, y, w, activation, output_type)
+forward_backward_pass(
+  x,
+  y,
+  w,
+  activation,
+  output_type,
+  dropout = FALSE,
+  retain_rate = NULL,
+  forward_only = FALSE
+)
 }
 \arguments{
 \item{x}{The inputs}
@@ -15,6 +24,12 @@ forward_backward_pass(x, y, w, activation, output_type)
 and the last element are connection weights from the last hidden layer to the outputs}
 
 \item{output_type}{The output type: either "numeric" (regression) or "categorical" (prediction).}
+
+\item{dropout}{Boolean to indicate whether dropout is used}
+
+\item{retain_rate}{The proportion of units to retain during dropout}
+
+\item{forward_only}{If TRUE the function will only evaluate the forward pass}
 }
 \value{
 A list containing the following elements:
