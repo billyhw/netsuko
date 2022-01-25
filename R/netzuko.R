@@ -389,7 +389,8 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class", "hidden"))
 #' @param iter The number of iterations of gradient descent
 #' @param activation The hidden unit activation function (Tanh, ReLU, or Logistic)
 #' @param step_size The step size for gradient descent
-#' @param batch_size The batch size for stochastic gradient descent
+#' @param batch_size The batch size for stochastic gradient descent.
+#' If NULL, run (non-stochastic) gradient descent
 #' @param lambda The weight decay parameter
 #' @param momentum The momentum for the momentum term in gradient descent
 #' @param ini_w A list of initial weights. If not provided the function will initialize the weights
@@ -572,6 +573,10 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   }
   else w = ini_w
 
+  if (is.null(batch_size)) batch_size = nrow(x_train)
+  if (batch_size > nrow(x_train)) stop("batch_size must be NULL (for non-stochastic gradient descent)
+                                       or less than or equal to the number of training samples")
+
   ind = sample(1:nrow(x_train), batch_size)
   if (dropout) fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type,
                                                 dropout = T, retain_rate = retain_rate)
@@ -600,6 +605,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   for (j in 1:length(w)) g_w[[j]] = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
   if (keep_grad) g_hist[[1]] = NA
   # z_hist[[1]] = fb_test$z
+
 
   for (i in 2:iter) {
 

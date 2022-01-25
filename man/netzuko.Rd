@@ -49,7 +49,8 @@ a neural network with 2 hidden layers with 2 hidden units in each layer.}
 
 \item{step_size}{The step size for gradient descent}
 
-\item{batch_size}{The batch size for stochastic gradient descent}
+\item{batch_size}{The batch size for stochastic gradient descent.
+If NULL, run (non-stochastic) gradient descent}
 
 \item{lambda}{The weight decay parameter}
 
