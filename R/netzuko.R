@@ -573,7 +573,8 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   else w = ini_w
 
   ind = sample(1:nrow(x_train), batch_size)
-  if (dropout) fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type, forward_only = T)
+  if (dropout) fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type,
+                                                dropout = T, retain_rate = retain_rate)
   else fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type)
   penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
   cost_train[1] = cost_func(fb_train$p, y_train[ind,]) + penalty
@@ -606,12 +607,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
       pen_w = lambda * w[[j]]
       pen_w[1, ] = 0
 
-      if (dropout) {
-        fb_train_dropout = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type,
-                                                 dropout = T, retain_rate = retain_rate)
-        grad[[j]] = grad_w(fb_train_dropout$delta[[j]], fb_train_dropout$z[[j]]) + pen_w
-      }
-      else grad[[j]] = grad_w(fb_train$delta[[j]], fb_train$z[[j]]) + pen_w
+      grad[[j]] = grad_w(fb_train$delta[[j]], fb_train$z[[j]]) + pen_w
       g_w[[j]] = momentum*g_w[[j]] - step_size * grad[[j]]
 
       w[[j]] = w[[j]] + g_w[[j]]
@@ -619,19 +615,20 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
 
     if (keep_grad) g_hist[[i]] = grad
 
-    if (dropout) {
-      w_adjust = lapply(w, function(x) {
-        x[-1,] = retain_rate*x[-1,]
-        x
-      })
-      fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w_adjust, activation, output_type, forward_only = T)
-    }
+    if (dropout) fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type,
+                                       dropout = T, retain_rate = retain_rate)
     else fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type)
     penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
     cost_train[i] = cost_func(fb_train$p, y_train[ind,]) + penalty
 
     if (!is.null(x_test) & !is.null(y_test)) {
-      if (dropout) fb_test = forward_backward_pass(x_test, y_test, w_adjust, activation, output_type, forward_only = T)
+      if (dropout) {
+        w_adjust = lapply(w, function(x) {
+          x[-1,] = retain_rate*x[-1,]
+          x
+        })
+        fb_test = forward_backward_pass(x_test, y_test, w_adjust, activation, output_type, forward_only = T)
+      }
       else fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type, forward_only = T)
       cost_test[i] = cost_func(fb_test$p, y_test)
     }
