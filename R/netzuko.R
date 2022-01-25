@@ -389,6 +389,7 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class", "hidden"))
 #' @param iter The number of iterations of gradient descent
 #' @param activation The hidden unit activation function (Tanh, ReLU, or Logistic)
 #' @param step_size The step size for gradient descent
+#' @param batch_size The batch size for stochastic gradient descent
 #' @param lambda The weight decay parameter
 #' @param momentum The momentum for the momentum term in gradient descent
 #' @param ini_w A list of initial weights. If not provided the function will initialize the weights
@@ -451,7 +452,7 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class", "hidden"))
 #' @export
 #' @import Matrix
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type = NULL, num_hidden = c(2, 2),
-                   iter = 300, activation = c("relu", "tanh", "logistic"), step_size = 0.01,
+                   iter = 300, activation = c("relu", "tanh", "logistic"), step_size = 0.01, batch_size = 128,
                    lambda = 1e-5, momentum = 0.9, dropout = FALSE, retain_rate = 0.5, ini_w = NULL,
                    ini_method = c("normalized", "uniform", "gaussian", "pretrain"),
                    scale = FALSE, sparse = FALSE, verbose = F, keep_grad = F) {
@@ -571,10 +572,11 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   }
   else w = ini_w
 
-  if (dropout) fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type, forward_only = T)
-  else fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
+  ind = sample(1:nrow(x_train), batch_size)
+  if (dropout) fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type, forward_only = T)
+  else fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type)
   penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
-  cost_train[1] = cost_func(fb_train$p, y_train) + penalty
+  cost_train[1] = cost_func(fb_train$p, y_train[ind,]) + penalty
 
   if (!is.null(x_test) & !is.null(y_test)) {
     if (dropout) fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type, forward_only = T)
@@ -605,7 +607,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
       pen_w[1, ] = 0
 
       if (dropout) {
-        fb_train_dropout = forward_backward_pass(x_train, y_train, w, activation, output_type,
+        fb_train_dropout = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type,
                                                  dropout = T, retain_rate = retain_rate)
         grad[[j]] = grad_w(fb_train_dropout$delta[[j]], fb_train_dropout$z[[j]]) + pen_w
       }
@@ -622,11 +624,11 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
         x[-1,] = retain_rate*x[-1,]
         x
       })
-      fb_train = forward_backward_pass(x_train, y_train, w_adjust, activation, output_type, forward_only = T)
+      fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w_adjust, activation, output_type, forward_only = T)
     }
-    else fb_train = forward_backward_pass(x_train, y_train, w, activation, output_type)
+    else fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type)
     penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
-    cost_train[i] = cost_func(fb_train$p, y_train) + penalty
+    cost_train[i] = cost_func(fb_train$p, y_train[ind,]) + penalty
 
     if (!is.null(x_test) & !is.null(y_test)) {
       if (dropout) fb_test = forward_backward_pass(x_test, y_test, w_adjust, activation, output_type, forward_only = T)
@@ -641,6 +643,8 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
                                                        " test cost = ", round(cost_test[i], 6))
       else message("iter = ", i, " training cost = ", round(cost_train[i], 6))
     }
+
+    ind = sample(1:nrow(x_train), batch_size)
   }
 
   fit = list(cost_train = cost_train, cost_test = cost_test, w = w, ini_w = ini_w,

@@ -14,6 +14,7 @@ netzuko(
   iter = 300,
   activation = c("relu", "tanh", "logistic"),
   step_size = 0.01,
+  batch_size = 128,
   lambda = 1e-05,
   momentum = 0.9,
   dropout = FALSE,
@@ -47,6 +48,8 @@ a neural network with 2 hidden layers with 2 hidden units in each layer.}
 \item{activation}{The hidden unit activation function (Tanh, ReLU, or Logistic)}
 
 \item{step_size}{The step size for gradient descent}
+
+\item{batch_size}{The batch size for stochastic gradient descent}
 
 \item{lambda}{The weight decay parameter}
 
