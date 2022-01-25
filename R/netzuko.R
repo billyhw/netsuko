@@ -577,7 +577,11 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   if (batch_size > nrow(x_train)) stop("batch_size must be NULL (for non-stochastic gradient descent)
                                        or less than or equal to the number of training samples")
 
-  ind = sample(1:nrow(x_train), batch_size)
+  ind_mat = matrix(1:nrow(x_train), nrow = batch_size)
+
+  #ind = sample(1:nrow(x_train), batch_size)
+  ind = ind_mat[, 1]
+
   if (dropout) fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type,
                                                 dropout = T, retain_rate = retain_rate)
   else fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type)
@@ -605,7 +609,6 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   for (j in 1:length(w)) g_w[[j]] = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
   if (keep_grad) g_hist[[1]] = NA
   # z_hist[[1]] = fb_test$z
-
 
   for (i in 2:iter) {
 
@@ -647,7 +650,8 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
       else message("iter = ", i, " training cost = ", round(cost_train[i], 6))
     }
 
-    ind = sample(1:nrow(x_train), batch_size)
+    # ind = sample(1:nrow(x_train), batch_size)
+    ind = ind_mat[, (i-1) %% ncol(ind_mat) + 1]
   }
 
   fit = list(cost_train = cost_train, cost_test = cost_test, w = w, ini_w = ini_w,
