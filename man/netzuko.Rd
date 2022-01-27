@@ -19,6 +19,10 @@ netzuko(
   momentum = 0.9,
   dropout = FALSE,
   retain_rate = 0.5,
+  adam = FALSE,
+  beta_1 = 0.9,
+  beta_2 = 0.999,
+  epsilon = 1e-08,
   ini_w = NULL,
   ini_method = c("normalized", "uniform", "gaussian", "pretrain"),
   scale = FALSE,
@@ -55,6 +59,18 @@ If NULL, run (non-stochastic) gradient descent}
 \item{lambda}{The weight decay parameter}
 
 \item{momentum}{The momentum for the momentum term in gradient descent}
+
+\item{dropout}{If dropout should be used}
+
+\item{retain_rate}{If dropout is used, the retain rate for the input and hidden units}
+
+\item{adam}{If ADAM should be used for weight updates}
+
+\item{beta_1}{A parameter for ADAM}
+
+\item{beta_2}{A parameter for ADAM}
+
+\item{epsilon}{A parameter for ADAM}
 
 \item{ini_w}{A list of initial weights. If not provided the function will initialize the weights
 automatically by simulating from a Gaussian distribution with small variance.}

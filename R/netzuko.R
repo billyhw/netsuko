@@ -393,6 +393,12 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class", "hidden"))
 #' If NULL, run (non-stochastic) gradient descent
 #' @param lambda The weight decay parameter
 #' @param momentum The momentum for the momentum term in gradient descent
+#' @param dropout If dropout should be used
+#' @param retain_rate If dropout is used, the retain rate for the input and hidden units
+#' @param adam If ADAM should be used for weight updates
+#' @param beta_1 A parameter for ADAM
+#' @param beta_2 A parameter for ADAM
+#' @param epsilon A parameter for ADAM
 #' @param ini_w A list of initial weights. If not provided the function will initialize the weights
 #' automatically by simulating from a Gaussian distribution with small variance.
 #' @param ini_method The initialization method
@@ -454,8 +460,9 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class", "hidden"))
 #' @import Matrix
 netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type = NULL, num_hidden = c(2, 2),
                    iter = 300, activation = c("relu", "tanh", "logistic"), step_size = 0.01, batch_size = 128,
-                   lambda = 1e-5, momentum = 0.9, dropout = FALSE, retain_rate = 0.5, ini_w = NULL,
-                   ini_method = c("normalized", "uniform", "gaussian", "pretrain"),
+                   lambda = 1e-5, momentum = 0.9, dropout = FALSE, retain_rate = 0.5,
+                   adam = FALSE, beta_1 = 0.9, beta_2 = 0.999, epsilon = 1e-8,
+                   ini_w = NULL, ini_method = c("normalized", "uniform", "gaussian", "pretrain"),
                    scale = FALSE, sparse = FALSE, verbose = F, keep_grad = F) {
 
   # if (is.vector(x_train) | is.null(dim(x_train))) x_train = matrix(x_train, ncol = 1)
@@ -610,6 +617,17 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   if (keep_grad) g_hist[[1]] = NA
   # z_hist[[1]] = fb_test$z
 
+  if (adam) {
+    # m = v = m_hat = v_hat = vector("list", length(w))
+    m = v = vector("list", length(w))
+    for (j in 1:length(w)) {
+      m[[j]] = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
+      v[[j]]  = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
+      # m_hat[[j]] = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
+      # v_hat[[j]] = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
+    }
+  }
+
   for (i in 2:iter) {
 
     for (j in 1:length(w)) {
@@ -617,7 +635,16 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
       pen_w[1, ] = 0
 
       grad[[j]] = grad_w(fb_train$delta[[j]], fb_train$z[[j]]) + pen_w
-      g_w[[j]] = momentum*g_w[[j]] - step_size * grad[[j]]
+      if (adam) {
+        m[[j]] = beta_1 * m[[j]] + (1 - beta_1) * grad[[j]]
+        v[[j]] = beta_2 * v[[j]] + (1 - beta_2) * grad[[j]]^2
+        # m_hat[[j]] = m[[j]]/(1 - beta_1^(i-1))
+        # v_hat[[j]] = v[[j]]/(1 - beta_2^(i-1))
+        # g_w[[j]] = -step_size*m_hat[[j]]/(sqrt(v_hat[[j]]) + epsilon)
+        step_size_hat = step_size * sqrt(1 - beta_2^(i-1))/(1 - beta_1^(i-1))
+        g_w[[j]] = -step_size_hat*m[[j]]/(sqrt(v[[j]]) + epsilon)
+      }
+      else g_w[[j]] = momentum*g_w[[j]] - step_size * grad[[j]]
 
       w[[j]] = w[[j]] + g_w[[j]]
     }
