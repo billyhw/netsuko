@@ -57,20 +57,52 @@ relu_activation = function(s) s*(s > 0)
 #'
 #' @param y The outputs
 #' @param p The predictions
+#' @param batch_norm If batch_norm is applied
+#' @param x The original hidden units
+#' @param gamma The gamma parameter from batch-norm
+#' @param mean_x The column means of x
+#' @param sd_x The column standard deviation of x (+ epsilon)
 #' @return The error term (a.k.a delta) from the output to the last hidden layer
 #' @note For Internal Use
-get_error_output = function(y, p) y - p
+get_error_output = function(y, p, batch_norm = F, batch_norm_obj = NULL) {
+  delta = y - p
+  if (!batch_norm) return(delta)
+  else {
+    sum_1 = colMeans(delta)
+    sum_2 = t(batch_norm_obj$x_centered)*rowMeans(t(delta*batch_norm_obj$x_centered)/(batch_norm_obj$sd_x^2))
+    t((t(delta) - sum_1 - sum_2)*batch_norm_obj$gamma/batch_norm_obj$sd_x)
+  }
+}
 
 #' Compute errors from a layer to the previous layer
 #'
 #' @param delta The error from the next layer
 #' @param grad_s The gradient of the activation function for linear predictors at the current layer
 #' @param The weights associated with the current layer
+#' @param x The original hidden units
+#' @param gamma The gamma parameter from batch-norm
+#' @param mean_x The column means of x
+#' @param sd_x The column standard deviation of x (+ epsilon)
 #' @return The error term to be back-propagated
 #' @note For Internal use
-get_error_hidden = function(delta, grad_s, w) {
-  if (nrow(w) > 2) grad_s * tcrossprod(delta, w[-1,])
-  else grad_s * (delta %*% w[-1,])
+get_error_hidden = function(delta, grad_s, w, batch_norm = F, batch_norm_obj = NULL, get_beta = F) {
+  if (!batch_norm) {
+    if (get_beta) {
+      if (!is.null(nrow(w))) grad_s * tcrossprod(delta, w)
+      else grad_s * (delta %*% w)
+    }
+    else {
+      if (nrow(w) > 2) grad_s * tcrossprod(delta, w[-1,])
+      else grad_s * (delta %*% w[-1,])
+    }
+  }
+  else {
+    if (!is.null(nrow(w))) delta = grad_s * tcrossprod(delta, w)
+    else delta = grad_s * (delta %*% w)
+    sum_1 = colMeans(delta)
+    sum_2 = t(batch_norm_obj$x_centered)*rowMeans(t(delta*batch_norm_obj$x_centered)/(batch_norm_obj$sd_x^2))
+    t((t(delta) - sum_1 - sum_2)*batch_norm_obj$gamma/batch_norm_obj$sd_x)
+  }
 }
 
 #' Compute the gradient of the logistic activation function
@@ -130,7 +162,7 @@ grad_w = function(delta, x) -crossprod(x, delta)/nrow(x)
 #' Scale a matrix
 #' @param x The matrix to be scaled
 #' @param mean_x The means to subtract. Will be computed if NULL
-#' @param sd_x The standard deviation to devide. Will be computed if NULL
+#' @param sd_x The standard deviation to divide. Will be computed if NULL
 #' @param intercept Indicates if the first column of x is an intercept (all 1's)
 #' @return A list containing the scaled matrix, and the mean
 #' and standard deviations used by scaling
@@ -143,16 +175,37 @@ scale_matrix = function(x, mean_x = NULL, sd_x = NULL, intercept = F) {
   return(ls = list(x = x_scaled, mean_x = mean_x, sd_x = sd_x))
 }
 
+#' Batch Normalization for re-scaling a set of units
+#' @param x The matrix of units to be batch-normalized
+#' @param gamma A vector of re-scaling parameters
+#' @param beta A vector of re-shifting constants
+#' @param epsilon The additive constant for numerical stability
+#' @return The batch-normalized matrix of re-scaled units
+#' @note For Internal Use. The input matrix should have no intercept.
+batch_normalization = function(x, gamma, beta, mean_x = NULL, var_x = NULL, epsilon = 1e-8) {
+  if (is.null(mean_x)) mean_x = colMeans(x)
+  x_centered = t(x) - mean_x
+  if (is.null(var_x)) var_x = rowMeans(x_centered^2)
+  sd_x = sqrt(var_x + epsilon)
+  x_scaled = x_centered/sd_x
+  x_rescaled = t(x_scaled * gamma + beta)
+  return(ls = list(x_rescaled = x_rescaled, x_centered = t(x_centered),
+                   x_scaled = t(x_scaled), mean_x = mean_x, var_x = var_x, sd_x = sd_x, gamma = gamma))
+}
+
 #' Initialize weights
 #'
 #' @param x_train The training inputs
 #' @param y_train The training outputs
 #' @param num_hidden Vector with number of hidden units for each hidden layer
 #' @param method The initialization method
+#' @param batch_norm Whether batch-normalization is applied
 #' @return Initial weights
 #' @note For Internal Use
-initialize_weights = function(x_train, y_train, num_hidden, method) {
+initialize_weights = function(x_train, y_train, num_hidden, method, batch_norm = F) {
   w = vector("list", length(num_hidden) - 1)
+  if (batch_norm) gamma = beta = vector("list", length(num_hidden) - 1)
+
   for (i in 1:(length(num_hidden) - 1)) {
     if (method == "gaussian") {
       w[[i]] = matrix(rnorm((num_hidden[i] + 1)*num_hidden[i+1], sd = 0.1),
@@ -169,9 +222,34 @@ initialize_weights = function(x_train, y_train, num_hidden, method) {
                             max = sqrt(6/(num_hidden[i] + num_hidden[i+1]))),
                       num_hidden[i] + 1, num_hidden[i+1])
     }
-    w[[i]][1,] = 0
+    if (batch_norm) w[[i]] = w[[i]][-1,]
+    else w[[i]][1,] = 0
   }
-  w
+
+  if (batch_norm) {
+    for (i in 1:(length(num_hidden) - 1)) {
+      if (method == "gaussian") {
+        gamma[[i]] = rnorm(num_hidden[i+1], sd = 0.1)
+        beta[[i]] = rnorm(num_hidden[i+1], sd = 0.1)
+      }
+      else if (method == "uniform") {
+        gamma[[i]] = runif(num_hidden[i+1], min = -1/sqrt(num_hidden[i]), max = 1/sqrt(num_hidden[i]))
+        beta[[i]] = runif(num_hidden[i+1], min = -1/sqrt(num_hidden[i]), max = 1/sqrt(num_hidden[i]))
+      }
+      else if (method == "normalized") {
+        gamma[[i]] = rep(1, num_hidden[i+1])
+        # gamma[[i]] = runif(num_hidden[i+1],
+        #                       min = -sqrt(6/(num_hidden[i] + num_hidden[i+1])),
+        #                       max = sqrt(6/(num_hidden[i] + num_hidden[i+1])))
+        # beta[[i]] = runif(num_hidden[i+1],
+        #                    min = -sqrt(6/(num_hidden[i] + num_hidden[i+1])),
+        #                    max = sqrt(6/(num_hidden[i] + num_hidden[i+1])))
+        beta[[i]] = rep(0, num_hidden[i+1])
+      }
+    }
+  }
+  if (!batch_norm) return(w)
+  else return(ls = list(w = w, gamma = gamma, beta = beta))
 }
 
 #' Initialize weights by Stacking Autoencoders
@@ -210,13 +288,17 @@ pretrain = function(x_train, y_train, num_hidden,
 #' @param dropout Boolean to indicate whether dropout is used
 #' @param retain_rate The proportion of units to retain during dropout
 #' @param forward_only If TRUE the function will only evaluate the forward pass
+#' @param batch_norm If TRUE, batch-normalization will be applied on the linear predictors
+#' @param gamma The scale parameters for batchnorm
+#' @param beta The location parameters for batchnorm
 #' @return A list containing the following elements:
 #' p: the output probabilities
 #' delta: a list of errors backpropagated throught the layers
 #' z: the hidden units values
 forward_backward_pass = function(x, y, w, activation, output_type,
                                  dropout = FALSE, retain_rate = NULL,
-                                 forward_only = FALSE) {
+                                 batch_norm = F, gamma = NULL, beta = NULL,
+                                 forward_only = FALSE, mean_x = NULL, var_x = NULL) {
 
   if (activation == "logistic") {
     activation_func = logistic_activation
@@ -235,6 +317,8 @@ forward_backward_pass = function(x, y, w, activation, output_type,
 
   s_list = vector("list", length(w) - 1)
   z_list = vector("list", length(w))
+  b_list = NULL
+  if (batch_norm) b_list = vector("list", length(w))
 
   z_list[[1]] = x
 
@@ -243,20 +327,42 @@ forward_backward_pass = function(x, y, w, activation, output_type,
   for (i in 2:length(z_list)) {
     if (dropout) {
       r = rbinom(ncol(z_list[[i-1]]), 1, retain_rate)
-      r[1] = 1
+      if (!batch_norm) r[1] = 1
       z_dropout = z_list[[i-1]]
       z_dropout[, which(r == 0)] = 0
-      s_list[[i-1]] = get_s(z_dropout, w[[i-1]])
+      if (batch_norm) {
+        s = get_s(z_dropout, w[[i-1]])
+        b_list[[i-1]] = batch_normalization(s, gamma[[i-1]], beta[[i-1]],
+                                            mean_x = mean_x[[i-1]], var_x = var_x[[i-1]])
+        s_list[[i-1]] = b_list[[i-1]]$x_rescaled
+      }
+      else s_list[[i-1]] = get_s(z_dropout, w[[i-1]])
     }
-    else s_list[[i-1]] = get_s(z_list[[i-1]], w[[i-1]])
-    z_list[[i]] = cbind(rep(1, nrow(x)), activation_func(s_list[[i-1]]))
+    else {
+      if (batch_norm) {
+        s = get_s(z_list[[i-1]], w[[i-1]])
+        b_list[[i-1]] = batch_normalization(s, gamma[[i-1]], beta[[i-1]],
+                                            mean_x = mean_x[[i-1]], var_x = var_x[[i-1]])
+        s_list[[i-1]] = b_list[[i-1]]$x_rescaled
+      }
+      else s_list[[i-1]] = get_s(z_list[[i-1]], w[[i-1]])
+    }
+    if (batch_norm) z_list[[i]] = activation_func(s_list[[i-1]])
+    else z_list[[i]] = cbind(rep(1, nrow(x)), activation_func(s_list[[i-1]]))
   }
 
   # compute the output units
 
-  s = get_s(z_list[[length(z_list)]], w[[length(w)]])
+  if (batch_norm) {
+    s = get_s(z_list[[length(z_list)]], w[[length(w)]])
+    b_list[[length(b_list)]] = batch_normalization(s, gamma[[length(w)]], beta[[length(w)]],
+                                                   mean_x = mean_x[[length(w)]], var_x = var_x[[length(w)]])
+    s = b_list[[length(b_list)]]$x_rescaled
+  }
+  else s = get_s(z_list[[length(z_list)]], w[[length(w)]])
+
   if (output_type == "categorical") p = soft_max(s)
-  if (output_type == "logistic") p = logistic_activation(s)
+  else if (output_type == "logistic") p = logistic_activation(s)
   else if (output_type == "numeric") p = s
 
   if (forward_only) return(ls = list(p=p, delta = NULL, z = z_list, s = s_list))
@@ -265,19 +371,31 @@ forward_backward_pass = function(x, y, w, activation, output_type,
   # output -> last hidden layer -> 2nd last hidden layer etc.
 
   delta_list = vector("list", length(w))
+  delta_beta_list = NULL
+  if (batch_norm) delta_beta_list = vector("list", length(w))
 
   # compute the errors from the output-hidden layer
 
-  delta_list[[length(w)]] = get_error_output(y, p)
+  if (batch_norm) {
+    delta_list[[length(w)]] = get_error_output(y, p, batch_norm = batch_norm,
+                                               batch_norm_obj = b_list[[length(b_list)]])
+    delta_beta_list[[length(w)]] = get_error_output(y, p, batch_norm = F)
+  }
+  else delta_list[[length(w)]] = get_error_output(y, p)
 
   # compute the errors from the hidden-input layer propagating backwards
 
   for (i in (length(w) - 1):1) {
     grad_s = grad_func(s_list[[i]])
-    delta_list[[i]] = get_error_hidden(delta_list[[i+1]], grad_s, w[[i+1]])
+    if (batch_norm) {
+      delta_list[[i]] = get_error_hidden(delta_list[[i+1]], grad_s, w[[i+1]], batch_norm = batch_norm,
+                                         batch_norm_obj = b_list[[i]])
+      delta_beta_list[[i]] = get_error_hidden(delta_list[[i+1]], grad_s, w[[i+1]], batch_norm = F, get_beta = T)
+      }
+    else delta_list[[i]] = get_error_hidden(delta_list[[i+1]], grad_s, w[[i+1]])
   }
 
-  return(ls = list(p=p, delta = delta_list, z = z_list, s = s_list))
+  return(ls = list(p=p, delta = delta_list, z = z_list, s = s_list, b = b_list, delta_beta = delta_beta_list))
 
 }
 
@@ -402,6 +520,9 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class", "hidden"))
 #' @param ini_w A list of initial weights. If not provided the function will initialize the weights
 #' automatically by simulating from a Gaussian distribution with small variance.
 #' @param ini_method The initialization method
+#' @param batch_norm If TRUE, batch-normalization will be applied
+#' @param ini_gamma The gamma parameters for batch-normalization
+#' @param ini_beta The beta parameters for batch-normalization
 #' @param sparse If the input matrix is sparse, setting sparse to TRUE can speed up the code.
 #' @param verbose Will display fitting progress when set to TRUE
 #' @param keep_grad Save the gradients at each iteration? (For research purpose)
@@ -463,6 +584,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
                    lambda = 1e-5, momentum = 0.9, dropout = FALSE, retain_rate = 0.5,
                    adam = FALSE, beta_1 = 0.9, beta_2 = 0.999, epsilon = 1e-8,
                    ini_w = NULL, ini_method = c("normalized", "uniform", "gaussian", "pretrain"),
+                   batch_norm = F, ini_gamma = NULL, ini_beta = NULL, epsilon_batch_norm = 1e-8,
                    scale = FALSE, sparse = FALSE, verbose = F, keep_grad = F) {
 
   # if (is.vector(x_train) | is.null(dim(x_train))) x_train = matrix(x_train, ncol = 1)
@@ -499,14 +621,16 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
 
   # num_p = ncol(x_train)
   #x_train = cbind(rep(1, nrow(x_train)), x_train)
-  x_train = model.matrix(~ x_train)
+  if (batch_norm) x_train = model.matrix(~ x_train - 1)
+  else x_train = model.matrix(~ x_train)
   y_train = model.matrix(~ y_train - 1)
   cost_train = rep(NA, iter)
   cost_test = NULL
 
   if (!is.null(x_test) & !is.null(y_test)) {
     # if (is.vector(x_test) | is.null(dim(x_test))) x_test = matrix(x_test, ncol = 1)
-    x_test = model.matrix(~ x_test)
+    if (batch_norm) x_test = model.matrix(~ x_test - 1)
+    else x_test = model.matrix(~ x_test)
     y_test = model.matrix(~ y_test - 1)
     cost_test = rep(NA, iter)
   }
@@ -555,7 +679,8 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   #   }
   # }
 
-  num_hidden = c(ncol(x_train)-1, num_hidden, ncol(y_train))
+  if (batch_norm) num_hidden = c(ncol(x_train), num_hidden, ncol(y_train))
+  else num_hidden = c(ncol(x_train)-1, num_hidden, ncol(y_train))
 
   if (is.null(ini_w)) {
     if (ini_method == "pretrain") {
@@ -575,10 +700,22 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
                    sparse = sparse, verbose = verbose)
       }
     }
-    else w = initialize_weights(x_train, y_train, num_hidden, method = ini_method)
-    ini_w = w
+    else w = initialize_weights(x_train, y_train, num_hidden, method = ini_method, batch_norm = batch_norm)
+    if (!batch_norm) ini_w = w
+    else {
+      ini_w = w$w
+      ini_gamma = w$gamma
+      ini_beta = w$beta
+      w = ini_w
+      gamma = ini_gamma
+      beta = ini_beta
+    }
   }
-  else w = ini_w
+  else {
+    w = ini_w
+    gamma = ini_gamma
+    beta = ini_beta
+  }
 
   if (is.null(batch_size)) batch_size = nrow(x_train)
   if (batch_size > nrow(x_train)) stop("batch_size must be NULL (for non-stochastic gradient descent)
@@ -589,14 +726,38 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   #ind = sample(1:nrow(x_train), batch_size)
   ind = ind_mat[, 1]
 
-  if (dropout) fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type,
+  if (dropout) {
+    if (batch_norm) {
+      fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type,
+                                       dropout = T, retain_rate = retain_rate,
+                                       batch_norm = T, gamma = gamma, beta = beta)
+    }
+    else fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type,
                                                 dropout = T, retain_rate = retain_rate)
-  else fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type)
-  penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
+  }
+  else {
+    if (batch_norm) {
+      fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type,
+                                       batch_norm = T, gamma = gamma, beta = beta)
+      }
+    else fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type)
+  }
+
+  batch_mean = NULL
+  batch_var = NULL
+  if (batch_norm) {
+    batch_mean = lapply(fb_train$b, function(x) 0.1*x$mean_x)
+    batch_var = lapply(fb_train$b, function(x) 0.1*x$var_x)
+  }
+
+  if (batch_norm) penalty = lambda/2*sum(sapply(w, function(x) sum(x^2)))
+  else penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
   cost_train[1] = cost_func(fb_train$p, y_train[ind,]) + penalty
 
   if (!is.null(x_test) & !is.null(y_test)) {
-    if (dropout) fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type, forward_only = T)
+    if (batch_norm) fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type, batch_norm = batch_norm,
+                                                    forward_only = T, gamma = gamma, beta = beta,
+                                                    mean_x = batch_mean, var_x = batch_var)
     else fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type, forward_only = T)
     cost_test[1] = cost_func(fb_test$p, y_test)
   }
@@ -608,21 +769,54 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   }
 
   g_hist = NULL
-  if (keep_grad) g_hist = vector("list", iter)
+  beta_g_hist = NULL
+  gamma_g_hist = NULL
+  if (keep_grad) {
+    g_hist = vector("list", iter)
+    beta_g_hist = vector("list", iter)
+    gamma_g_hist = vector("list", iter)
+  }
   # z_hist = vector("list", num_iter)
   g_w = vector("list", length(w))
   grad = vector("list", length(w))
+  g_beta = vector("list", length(w))
+  grad_beta = vector("list", length(w))
+  g_gamma = vector("list", length(w))
+  grad_gamma = vector("list", length(w))
 
-  for (j in 1:length(w)) g_w[[j]] = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
-  if (keep_grad) g_hist[[1]] = NA
+  for (j in 1:length(w)) {
+    if (batch_norm) {
+      g_w[[j]] = matrix(0, num_hidden[j], num_hidden[j+1])
+      g_beta[[j]] = rep(0, num_hidden[j+1])
+      g_gamma[[j]] = rep(0, num_hidden[j+1])
+    }
+    else g_w[[j]] = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
+  }
+  if (keep_grad) {
+    g_hist[[1]] = NA
+    beta_g_hist[[1]] = NA
+    gamma_g_hist[[1]] = NA
+  }
   # z_hist[[1]] = fb_test$z
 
   if (adam) {
     # m = v = m_hat = v_hat = vector("list", length(w))
     m = v = vector("list", length(w))
+    if (batch_norm) m_gamma = v_gamma = m_beta = v_beta = vector("list", length(w))
+
     for (j in 1:length(w)) {
-      m[[j]] = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
-      v[[j]]  = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
+      if (batch_norm) {
+        m[[j]] = matrix(0, num_hidden[j], num_hidden[j+1])
+        v[[j]]  = matrix(0, num_hidden[j], num_hidden[j+1])
+        m_gamma[[j]] = rep(0, num_hidden[j+1])
+        v_gamma[[j]]  = rep(0, num_hidden[j+1])
+        m_beta[[j]] = rep(0, num_hidden[j+1])
+        v_beta[[j]]  = rep(0, num_hidden[j+1])
+      }
+      else {
+        m[[j]] = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
+        v[[j]]  = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
+      }
       # m_hat[[j]] = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
       # v_hat[[j]] = matrix(0, num_hidden[j] + 1, num_hidden[j+1])
     }
@@ -632,7 +826,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
 
     for (j in 1:length(w)) {
       pen_w = lambda * w[[j]]
-      pen_w[1, ] = 0
+      if (!batch_norm) pen_w[1, ] = 0
 
       grad[[j]] = grad_w(fb_train$delta[[j]], fb_train$z[[j]]) + pen_w
       if (adam) {
@@ -647,25 +841,91 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
       else g_w[[j]] = momentum*g_w[[j]] - step_size * grad[[j]]
 
       w[[j]] = w[[j]] + g_w[[j]]
+
+      if (batch_norm) {
+        grad_beta[[j]] = -colMeans(fb_train$delta_beta[[j]])
+        grad_gamma[[j]] = -colMeans(fb_train$delta_beta[[j]]*fb_train$b[[j]]$x_scaled)
+        if (adam) {
+          m_beta[[j]] = beta_1 * m_beta[[j]] + (1 - beta_1) * grad_beta[[j]]
+          v_beta[[j]] = beta_2 * v_beta[[j]] + (1 - beta_2) * grad_beta[[j]]^2
+          # step_size_hat = step_size * sqrt(1 - beta_2^(i-1))/(1 - beta_1^(i-1))
+          g_beta[[j]] = -step_size_hat*m_beta[[j]]/(sqrt(v_beta[[j]]) + epsilon)
+
+          m_gamma[[j]] = beta_1 * m_gamma[[j]] + (1 - beta_1) * grad_gamma[[j]]
+          v_gamma[[j]] = beta_2 * v_gamma[[j]] + (1 - beta_2) * grad_gamma[[j]]^2
+          # step_size_hat = step_size * sqrt(1 - beta_2^(i-1))/(1 - beta_1^(i-1))
+          g_gamma[[j]] = -step_size_hat*m_gamma[[j]]/(sqrt(v_gamma[[j]]) + epsilon)
+        }
+        else {
+          g_beta[[j]] = momentum*g_beta[[j]] - step_size * grad_beta[[j]]
+          g_gamma[[j]] = momentum*g_gamma[[j]] - step_size * grad_gamma[[j]]
+        }
+        beta[[j]] = beta[[j]] + g_beta[[j]]
+        gamma[[j]] = gamma[[j]] + g_gamma[[j]]
+      }
     }
 
-    if (keep_grad) g_hist[[i]] = grad
+    if (keep_grad) {
+      g_hist[[i]] = grad
+      beta_g_hist[[i]] = grad_beta
+      gamma_g_hist[[i]] = grad_gamma
+    }
 
-    if (dropout) fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type,
-                                       dropout = T, retain_rate = retain_rate)
-    else fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type)
-    penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
+    if (dropout) {
+      if (batch_norm) {
+        fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type,
+                                         dropout = T, retain_rate = retain_rate,
+                                         batch_norm = T, gamma = gamma, beta = beta)
+      }
+      else {
+        fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type,
+                                         dropout = T, retain_rate = retain_rate)
+      }
+    }
+    else {
+      if (batch_norm) {
+        fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type,
+                              batch_norm = T, gamma = gamma, beta = beta)
+      }
+      else fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type)
+    }
+
+    if (batch_norm) {
+      batch_mean_new = lapply(fb_train$b, function(x) x$mean_x)
+      batch_var_new = lapply(fb_train$b, function(x) x$var_x)
+      batch_mean = mapply(function(a, b) 0.9*a + 0.1*b, batch_mean, batch_mean_new)
+      batch_var = mapply(function(a, b) 0.9*a + 0.1*b, batch_var, batch_var_new)
+    }
+
+    if (batch_norm) penalty = lambda/2*sum(sapply(w, function(x) sum(x^2)))
+    else penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))
     cost_train[i] = cost_func(fb_train$p, y_train[ind,]) + penalty
 
     if (!is.null(x_test) & !is.null(y_test)) {
       if (dropout) {
-        w_adjust = lapply(w, function(x) {
-          x[-1,] = retain_rate*x[-1,]
-          x
-        })
-        fb_test = forward_backward_pass(x_test, y_test, w_adjust, activation, output_type, forward_only = T)
+        if (batch_norm) {
+          w_adjust = lapply(w, function(x) {
+            x = retain_rate*x
+            x
+          })
+          fb_test = forward_backward_pass(x_test, y_test, w_adjust, activation, output_type, batch_norm = batch_norm,
+                                          forward_only = T, gamma = gamma, beta = beta,
+                                          mean_x = batch_mean, var_x = batch_var)
+        }
+        else {
+          w_adjust = lapply(w, function(x) {
+            x[-1,] = retain_rate*x[-1,]
+            x
+          })
+          fb_test = forward_backward_pass(x_test, y_test, w_adjust, activation, output_type, forward_only = T)
+        }
       }
-      else fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type, forward_only = T)
+      else {
+        if (batch_norm) fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type, batch_norm = batch_norm,
+                                                        forward_only = T, gamma = gamma, beta = beta,
+                                                        mean_x = batch_mean, var_x = batch_var)
+        else fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type, forward_only = T)
+      }
       cost_test[i] = cost_func(fb_test$p, y_test)
     }
 
@@ -682,9 +942,12 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   }
 
   fit = list(cost_train = cost_train, cost_test = cost_test, w = w, ini_w = ini_w,
-             activation = activation, y_levels = y_levels, output_type = output_type, g_hist = g_hist,
+             activation = activation, y_levels = y_levels, output_type = output_type,
+             g_hist = g_hist, beta_g_hist = beta_g_hist, gamma_g_hist = gamma_g_hist,
              mean_x = mean_x, mean_y = mean_y, sd_x = sd_x, sd_y = sd_y,
-             dropout = dropout, retain_rate = retain_rate)
+             dropout = dropout, retain_rate = retain_rate,
+             ini_gamma = ini_gamma, ini_beta = ini_beta,
+             batch_mean = batch_mean, batch_var = batch_var)
 
   class(fit) = "netzuko"
   return(fit)

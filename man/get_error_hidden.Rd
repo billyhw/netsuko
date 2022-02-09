@@ -4,7 +4,14 @@
 \alias{get_error_hidden}
 \title{Compute errors from a layer to the previous layer}
 \usage{
-get_error_hidden(delta, grad_s, w)
+get_error_hidden(
+  delta,
+  grad_s,
+  w,
+  batch_norm = F,
+  batch_norm_obj = NULL,
+  get_beta = F
+)
 }
 \arguments{
 \item{delta}{The error from the next layer}
@@ -12,6 +19,14 @@ get_error_hidden(delta, grad_s, w)
 \item{grad_s}{The gradient of the activation function for linear predictors at the current layer}
 
 \item{The}{weights associated with the current layer}
+
+\item{x}{The original hidden units}
+
+\item{gamma}{The gamma parameter from batch-norm}
+
+\item{mean_x}{The column means of x}
+
+\item{sd_x}{The column standard deviation of x (+ epsilon)}
 }
 \value{
 The error term to be back-propagated

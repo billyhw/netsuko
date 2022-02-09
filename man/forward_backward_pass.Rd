@@ -12,7 +12,12 @@ forward_backward_pass(
   output_type,
   dropout = FALSE,
   retain_rate = NULL,
-  forward_only = FALSE
+  batch_norm = F,
+  gamma = NULL,
+  beta = NULL,
+  forward_only = FALSE,
+  mean_x = NULL,
+  var_x = NULL
 )
 }
 \arguments{
@@ -28,6 +33,12 @@ and the last element are connection weights from the last hidden layer to the ou
 \item{dropout}{Boolean to indicate whether dropout is used}
 
 \item{retain_rate}{The proportion of units to retain during dropout}
+
+\item{batch_norm}{If TRUE, batch-normalization will be applied on the linear predictors}
+
+\item{gamma}{The scale parameters for batchnorm}
+
+\item{beta}{The location parameters for batchnorm}
 
 \item{forward_only}{If TRUE the function will only evaluate the forward pass}
 }

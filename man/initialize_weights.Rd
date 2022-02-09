@@ -4,7 +4,7 @@
 \alias{initialize_weights}
 \title{Initialize weights}
 \usage{
-initialize_weights(x_train, y_train, num_hidden, method)
+initialize_weights(x_train, y_train, num_hidden, method, batch_norm = F)
 }
 \arguments{
 \item{x_train}{The training inputs}
@@ -14,6 +14,8 @@ initialize_weights(x_train, y_train, num_hidden, method)
 \item{num_hidden}{Vector with number of hidden units for each hidden layer}
 
 \item{method}{The initialization method}
+
+\item{batch_norm}{Whether batch-normalization is applied}
 }
 \value{
 Initial weights

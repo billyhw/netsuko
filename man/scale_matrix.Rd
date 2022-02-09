@@ -11,7 +11,7 @@ scale_matrix(x, mean_x = NULL, sd_x = NULL, intercept = F)
 
 \item{mean_x}{The means to subtract. Will be computed if NULL}
 
-\item{sd_x}{The standard deviation to devide. Will be computed if NULL}
+\item{sd_x}{The standard deviation to divide. Will be computed if NULL}
 
 \item{intercept}{Indicates if the first column of x is an intercept (all 1's)}
 }

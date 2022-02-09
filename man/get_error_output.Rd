@@ -4,12 +4,22 @@
 \alias{get_error_output}
 \title{Compute errors from output to the last hidden layer}
 \usage{
-get_error_output(y, p)
+get_error_output(y, p, batch_norm = F, batch_norm_obj = NULL)
 }
 \arguments{
 \item{y}{The outputs}
 
 \item{p}{The predictions}
+
+\item{batch_norm}{If batch_norm is applied}
+
+\item{x}{The original hidden units}
+
+\item{gamma}{The gamma parameter from batch-norm}
+
+\item{mean_x}{The column means of x}
+
+\item{sd_x}{The column standard deviation of x (+ epsilon)}
 }
 \value{
 The error term (a.k.a delta) from the output to the last hidden layer

@@ -25,6 +25,10 @@ netzuko(
   epsilon = 1e-08,
   ini_w = NULL,
   ini_method = c("normalized", "uniform", "gaussian", "pretrain"),
+  batch_norm = F,
+  ini_gamma = NULL,
+  ini_beta = NULL,
+  epsilon_batch_norm = 1e-08,
   scale = FALSE,
   sparse = FALSE,
   verbose = F,
@@ -76,6 +80,12 @@ If NULL, run (non-stochastic) gradient descent}
 automatically by simulating from a Gaussian distribution with small variance.}
 
 \item{ini_method}{The initialization method}
+
+\item{batch_norm}{If TRUE, batch-normalization will be applied}
+
+\item{ini_gamma}{The gamma parameters for batch-normalization}
+
+\item{ini_beta}{The beta parameters for batch-normalization}
 
 \item{sparse}{If the input matrix is sparse, setting sparse to TRUE can speed up the code.}
 
