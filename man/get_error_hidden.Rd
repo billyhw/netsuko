@@ -4,14 +4,7 @@
 \alias{get_error_hidden}
 \title{Compute errors from a layer to the previous layer}
 \usage{
-get_error_hidden(
-  delta,
-  grad_s,
-  w,
-  batch_norm = F,
-  batch_norm_obj = NULL,
-  get_beta = F
-)
+get_error_hidden(delta, grad_s, w, batch_norm = F, batch_norm_obj = NULL)
 }
 \arguments{
 \item{delta}{The error from the next layer}

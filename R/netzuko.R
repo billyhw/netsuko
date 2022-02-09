@@ -85,23 +85,18 @@ get_error_output = function(y, p, batch_norm = F, batch_norm_obj = NULL) {
 #' @param sd_x The column standard deviation of x (+ epsilon)
 #' @return The error term to be back-propagated
 #' @note For Internal use
-get_error_hidden = function(delta, grad_s, w, batch_norm = F, batch_norm_obj = NULL, get_beta = F) {
+get_error_hidden = function(delta, grad_s, w, batch_norm = F, batch_norm_obj = NULL) {
   if (!batch_norm) {
-    if (get_beta) {
-      if (!is.null(nrow(w))) grad_s * tcrossprod(delta, w)
-      else grad_s * (delta %*% w)
-    }
-    else {
-      if (nrow(w) > 2) grad_s * tcrossprod(delta, w[-1,])
-      else grad_s * (delta %*% w[-1,])
-    }
+    if (nrow(w) > 2) grad_s * tcrossprod(delta, w[-1,])
+    else grad_s * (delta %*% w[-1,])
   }
   else {
-    if (!is.null(nrow(w))) delta = grad_s * tcrossprod(delta, w)
-    else delta = grad_s * (delta %*% w)
-    sum_1 = colMeans(delta)
-    sum_2 = t(batch_norm_obj$x_centered)*rowMeans(t(delta*batch_norm_obj$x_centered)/(batch_norm_obj$sd_x^2))
-    t((t(delta) - sum_1 - sum_2)*batch_norm_obj$gamma/batch_norm_obj$sd_x)
+    if (!is.null(nrow(w))) delta_beta = grad_s * tcrossprod(delta, w)
+    else delta_beta = grad_s * (delta %*% w)
+    sum_1 = colMeans(delta_beta)
+    sum_2 = t(batch_norm_obj$x_centered)*rowMeans(t(delta_beta*batch_norm_obj$x_centered)/(batch_norm_obj$sd_x^2))
+    delta = t((t(delta_beta) - sum_1 - sum_2)*batch_norm_obj$gamma/batch_norm_obj$sd_x)
+    return(ls = list(delta = delta, delta_beta = delta_beta))
   }
 }
 
@@ -388,10 +383,11 @@ forward_backward_pass = function(x, y, w, activation, output_type,
   for (i in (length(w) - 1):1) {
     grad_s = grad_func(s_list[[i]])
     if (batch_norm) {
-      delta_list[[i]] = get_error_hidden(delta_list[[i+1]], grad_s, w[[i+1]], batch_norm = batch_norm,
-                                         batch_norm_obj = b_list[[i]])
-      delta_beta_list[[i]] = get_error_hidden(delta_list[[i+1]], grad_s, w[[i+1]], batch_norm = F, get_beta = T)
-      }
+      tmp = get_error_hidden(delta_list[[i+1]], grad_s, w[[i+1]], batch_norm = batch_norm,
+                             batch_norm_obj = b_list[[i]])
+      delta_list[[i]] = tmp$delta
+      delta_beta_list[[i]] = tmp$delta_beta
+    }
     else delta_list[[i]] = get_error_hidden(delta_list[[i+1]], grad_s, w[[i+1]])
   }
 
