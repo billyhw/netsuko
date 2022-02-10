@@ -177,12 +177,14 @@ scale_matrix = function(x, mean_x = NULL, sd_x = NULL, intercept = F) {
 #' @param epsilon The additive constant for numerical stability
 #' @return The batch-normalized matrix of re-scaled units
 #' @note For Internal Use. The input matrix should have no intercept.
-batch_normalization = function(x, gamma, beta, mean_x = NULL, var_x = NULL, epsilon = 1e-8) {
+batch_normalization = function(x, gamma = NULL, beta = NULL, mean_x = NULL, var_x = NULL, epsilon = 1e-8) {
   if (is.null(mean_x)) mean_x = colMeans(x)
   x_centered = t(x) - mean_x
   if (is.null(var_x)) var_x = rowMeans(x_centered^2)
   sd_x = sqrt(var_x + epsilon)
   x_scaled = x_centered/sd_x
+  if (is.null(gamma)) gamma = sd_x
+  if (is.null(beta)) beta = mean_x
   x_rescaled = t(x_scaled * gamma + beta)
   return(ls = list(x_rescaled = x_rescaled, x_centered = t(x_centered),
                    x_scaled = t(x_scaled), mean_x = mean_x, var_x = var_x, sd_x = sd_x, gamma = gamma))
@@ -199,7 +201,6 @@ batch_normalization = function(x, gamma, beta, mean_x = NULL, var_x = NULL, epsi
 #' @note For Internal Use
 initialize_weights = function(x_train, y_train, num_hidden, method, batch_norm = F) {
   w = vector("list", length(num_hidden) - 1)
-  if (batch_norm) gamma = beta = vector("list", length(num_hidden) - 1)
 
   for (i in 1:(length(num_hidden) - 1)) {
     if (method == "gaussian") {
@@ -221,30 +222,7 @@ initialize_weights = function(x_train, y_train, num_hidden, method, batch_norm =
     else w[[i]][1,] = 0
   }
 
-  if (batch_norm) {
-    for (i in 1:(length(num_hidden) - 1)) {
-      if (method == "gaussian") {
-        gamma[[i]] = rnorm(num_hidden[i+1], sd = 0.1)
-        beta[[i]] = rnorm(num_hidden[i+1], sd = 0.1)
-      }
-      else if (method == "uniform") {
-        gamma[[i]] = runif(num_hidden[i+1], min = -1/sqrt(num_hidden[i]), max = 1/sqrt(num_hidden[i]))
-        beta[[i]] = runif(num_hidden[i+1], min = -1/sqrt(num_hidden[i]), max = 1/sqrt(num_hidden[i]))
-      }
-      else if (method == "normalized") {
-        gamma[[i]] = rep(1, num_hidden[i+1])
-        # gamma[[i]] = runif(num_hidden[i+1],
-        #                       min = -sqrt(6/(num_hidden[i] + num_hidden[i+1])),
-        #                       max = sqrt(6/(num_hidden[i] + num_hidden[i+1])))
-        # beta[[i]] = runif(num_hidden[i+1],
-        #                    min = -sqrt(6/(num_hidden[i] + num_hidden[i+1])),
-        #                    max = sqrt(6/(num_hidden[i] + num_hidden[i+1])))
-        beta[[i]] = rep(0, num_hidden[i+1])
-      }
-    }
-  }
-  if (!batch_norm) return(w)
-  else return(ls = list(w = w, gamma = gamma, beta = beta))
+  return(w)
 }
 
 #' Initialize weights by Stacking Autoencoders
@@ -360,7 +338,7 @@ forward_backward_pass = function(x, y, w, activation, output_type,
   else if (output_type == "logistic") p = logistic_activation(s)
   else if (output_type == "numeric") p = s
 
-  if (forward_only) return(ls = list(p=p, delta = NULL, z = z_list, s = s_list))
+  if (forward_only) return(ls = list(p=p, delta = NULL, z = z_list, s = s_list, b = b_list))
 
   # delta_list stores the delta from
   # output -> last hidden layer -> 2nd last hidden layer etc.
@@ -689,29 +667,16 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
              please rescale inputs if appropriate")
       }
       else {
-        w = pretrain(x_train[,-1], y_train, num_hidden,
+        ini_w = pretrain(x_train[,-1], y_train, num_hidden,
                    iter = iter, step_size = step_size,
                    lambda = lambda, momentum = momentum,
                    ini_method = "normalized",
                    sparse = sparse, verbose = verbose)
       }
     }
-    else w = initialize_weights(x_train, y_train, num_hidden, method = ini_method, batch_norm = batch_norm)
-    if (!batch_norm) ini_w = w
-    else {
-      ini_w = w$w
-      ini_gamma = w$gamma
-      ini_beta = w$beta
-      w = ini_w
-      gamma = ini_gamma
-      beta = ini_beta
-    }
+    else ini_w = initialize_weights(x_train, y_train, num_hidden, method = ini_method, batch_norm = batch_norm)
   }
-  else {
-    w = ini_w
-    gamma = ini_gamma
-    beta = ini_beta
-  }
+  w = ini_w
 
   if (is.null(batch_size)) batch_size = nrow(x_train)
   if (batch_size > nrow(x_train)) stop("batch_size must be NULL (for non-stochastic gradient descent)
@@ -726,7 +691,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
     if (batch_norm) {
       fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type,
                                        dropout = T, retain_rate = retain_rate,
-                                       batch_norm = T, gamma = gamma, beta = beta)
+                                       batch_norm = T, gamma = ini_gamma, beta = ini_beta)
     }
     else fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type,
                                                 dropout = T, retain_rate = retain_rate)
@@ -734,7 +699,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   else {
     if (batch_norm) {
       fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type,
-                                       batch_norm = T, gamma = gamma, beta = beta)
+                                       batch_norm = T, gamma = ini_gamma, beta = ini_beta)
       }
     else fb_train = forward_backward_pass(x_train[ind,], y_train[ind,], w, activation, output_type)
   }
@@ -742,9 +707,14 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   batch_mean = NULL
   batch_var = NULL
   if (batch_norm) {
-    batch_mean = lapply(fb_train$b, function(x) 0.1*x$mean_x)
-    batch_var = lapply(fb_train$b, function(x) 0.1*x$var_x)
+    batch_mean = lapply(fb_train$b, function(x) x$mean_x)
+    batch_var = lapply(fb_train$b, function(x) x$var_x)
+    if (is.null(ini_beta)) ini_beta = batch_mean
+    if (is.null(ini_gamma)) ini_gamma = lapply(fb_train$b, function(x) x$sd_x)
   }
+
+  gamma = ini_gamma
+  beta = ini_beta
 
   if (batch_norm) penalty = lambda/2*sum(sapply(w, function(x) sum(x^2)))
   else penalty = lambda/2*sum(sapply(w, function(x) sum(x[-1,]^2)))

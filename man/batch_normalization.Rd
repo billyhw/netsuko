@@ -6,8 +6,8 @@
 \usage{
 batch_normalization(
   x,
-  gamma,
-  beta,
+  gamma = NULL,
+  beta = NULL,
   mean_x = NULL,
   var_x = NULL,
   epsilon = 1e-08
