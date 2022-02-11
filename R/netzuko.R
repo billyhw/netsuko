@@ -658,6 +658,8 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
 
   if (is.null(ini_w)) {
     if (ini_method == "pretrain") {
+      if (batch_norm) stop("pretraining currently do not support batch normalization,
+                           please set batch_norm = F and restart")
       if (activation != "logistic") {
       stop("pretraining currently only supports logistic activation,
            please set activation to logistic and restart")
