@@ -273,6 +273,8 @@ forward_backward_pass = function(x, y, w, activation, output_type,
                                  batch_norm = F, gamma = NULL, beta = NULL,
                                  forward_only = FALSE, mean_x = NULL, var_x = NULL) {
 
+  if (is.vector(x)) x = matrix(x, ncol = 1)
+
   if (activation == "logistic") {
     activation_func = logistic_activation
     grad_func = grad_logistic
@@ -421,19 +423,29 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class", "hidden"))
 
   type = match.arg(type)
   #newdata = cbind(rep(1, nrow(newdata)), newdata)
-  newdata = model.matrix(~ newdata)
+  if (nn_fit$batch_norm) newdata = model.matrix(~ newdata - 1)
+  else newdata = model.matrix(~ newdata)
   if (!is.null(nn_fit$mean_x) & !is.null(nn_fit$sd_x)) {
-    newdata = scale_matrix(newdata, mean_x = nn_fit$mean_x, sd_x = nn_fit$sd_x, intercept = T)$x
+    if (nn_fit$batch_norm) newdata = scale_matrix(newdata, mean_x = nn_fit$mean_x, sd_x = nn_fit$sd_x, intercept = F)$x
+    else newdata = scale_matrix(newdata, mean_x = nn_fit$mean_x, sd_x = nn_fit$sd_x, intercept = T)$x
   }
 
   activation = nn_fit$activation
   w = nn_fit$w
   if (nn_fit$dropout) {
     retain_rate = nn_fit$retain_rate
-    w = lapply(w, function(x) {
-      x[-1,] = retain_rate*x[-1,]
-      x
-    })
+    if (nn_fit$batch_norm) {
+      w_adjust = lapply(w, function(x) {
+        x = retain_rate*x
+        x
+      })
+    }
+    else {
+      w = lapply(w, function(x) {
+        x[-1,] = retain_rate*x[-1,]
+        x
+      })
+    }
   }
 
   if (activation == "logistic") activation_func = logistic_activation
@@ -442,17 +454,40 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class", "hidden"))
 
   s_list = vector("list", length(w) - 1)
   z_list = vector("list", length(w))
+  b_list = NULL
+  if (nn_fit$batch_norm) b_list = vector("list", length(w))
 
   z_list[[1]] = newdata
 
   for (i in 2:length(z_list)) {
-    s_list[[i-1]] = get_s(z_list[[i-1]], w[[i-1]])
-    z_list[[i]] = cbind(rep(1, nrow(newdata)), activation_func(s_list[[i-1]]))
+    if (nn_fit$batch_norm) {
+      s = get_s(z_list[[i-1]], w[[i-1]])
+      b_list[[i-1]] = batch_normalization(s, nn_fit$gamma[[i-1]], nn_fit$beta[[i-1]],
+                                          mean_x = nn_fit$batch_mean[[i-1]], var_x = nn_fit$batch_var[[i-1]])
+      s_list[[i-1]] = b_list[[i-1]]$x_rescaled
+    }
+    else s_list[[i-1]] = get_s(z_list[[i-1]], w[[i-1]])
+    if (nn_fit$batch_norm) z_list[[i]] = activation_func(s_list[[i-1]])
+    else z_list[[i]] = cbind(rep(1, nrow(newdata)), activation_func(s_list[[i-1]]))
   }
+
+  # for (i in 2:length(z_list)) {
+  #   s_list[[i-1]] = get_s(z_list[[i-1]], w[[i-1]])
+  #   z_list[[i]] = cbind(rep(1, nrow(newdata)), activation_func(s_list[[i-1]]))
+  # }
 
   if (type == "hidden") return(z_list)
 
-  s = get_s(z_list[[length(z_list)]], w[[length(w)]])
+  if (nn_fit$batch_norm) {
+    s = get_s(z_list[[length(z_list)]], w[[length(w)]])
+    b_list[[length(b_list)]] = batch_normalization(s, nn_fit$gamma[[length(w)]], nn_fit$beta[[length(w)]],
+                                                   mean_x = nn_fit$batch_mean[[length(w)]],
+                                                   var_x = nn_fit$batch_var[[length(w)]])
+    s = b_list[[length(b_list)]]$x_rescaled
+  }
+  else s = get_s(z_list[[length(z_list)]], w[[length(w)]])
+
+  # s = get_s(z_list[[length(z_list)]], w[[length(w)]])
   if (nn_fit$output_type == "categorical") p = soft_max(s)
   if (nn_fit$output_type == "logistic") p = logistic_activation(s)
   else if (nn_fit$output_type == "numeric") {
@@ -915,7 +950,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
              mean_x = mean_x, mean_y = mean_y, sd_x = sd_x, sd_y = sd_y,
              dropout = dropout, retain_rate = retain_rate,
              ini_gamma = ini_gamma, ini_beta = ini_beta,
-             batch_mean = batch_mean, batch_var = batch_var)
+             batch_norm = batch_norm, batch_mean = batch_mean, batch_var = batch_var)
 
   class(fit) = "netzuko"
   return(fit)
