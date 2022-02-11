@@ -422,7 +422,7 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class", "hidden"))
   # if (is.vector(newdata) | is.null(dim(newdata))) newdata = matrix(newdata, ncol = 1)
 
   type = match.arg(type)
-  #newdata = cbind(rep(1, nrow(newdata)), newdata)
+  # newdata = cbind(rep(1, nrow(newdata)), newdata)
   if (nn_fit$batch_norm) newdata = model.matrix(~ newdata - 1)
   else newdata = model.matrix(~ newdata)
   if (!is.null(nn_fit$mean_x) & !is.null(nn_fit$sd_x)) {
@@ -435,7 +435,7 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class", "hidden"))
   if (nn_fit$dropout) {
     retain_rate = nn_fit$retain_rate
     if (nn_fit$batch_norm) {
-      w_adjust = lapply(w, function(x) {
+      w = lapply(w, function(x) {
         x = retain_rate*x
         x
       })
@@ -950,6 +950,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
              mean_x = mean_x, mean_y = mean_y, sd_x = sd_x, sd_y = sd_y,
              dropout = dropout, retain_rate = retain_rate,
              ini_gamma = ini_gamma, ini_beta = ini_beta,
+             gamma = gamma, beta = beta,
              batch_norm = batch_norm, batch_mean = batch_mean, batch_var = batch_var)
 
   class(fit) = "netzuko"
