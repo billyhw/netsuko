@@ -24,7 +24,7 @@ netzuko(
   beta_2 = 0.999,
   epsilon = 1e-08,
   ini_w = NULL,
-  ini_method = c("normalized", "uniform", "gaussian", "pretrain"),
+  ini_method = c("normalized", "uniform", "gaussian"),
   scale = FALSE,
   sparse = FALSE,
   verbose = F,

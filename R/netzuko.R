@@ -308,7 +308,7 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class", "hidden"))
     newdata = scale_matrix(newdata, mean_x = nn_fit$mean_x, sd_x = nn_fit$sd_x, intercept = T)$x
   }
 
-  activation = nn_fit$activation
+  # activation = nn_fit$activation
   w = nn_fit$w
   if (nn_fit$dropout) {
     retain_rate = nn_fit$retain_rate
@@ -318,19 +318,23 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class", "hidden"))
     })
   }
 
-  if (activation == "logistic") activation_func = logistic_activation
-  if (activation == "tanh") activation_func = tanh_activation
-  if (activation == "relu") activation_func = relu_activation
+  # if (activation == "logistic") activation_func = logistic_activation
+  # if (activation == "tanh") activation_func = tanh_activation
+  # if (activation == "relu") activation_func = relu_activation
+  #
+  # s_list = vector("list", length(w) - 1)
+  # z_list = vector("list", length(w))
+  #
+  # z_list[[1]] = newdata
+  #
+  # for (i in 2:length(z_list)) {
+  #   s_list[[i-1]] = get_s(z_list[[i-1]], w[[i-1]])
+  #   z_list[[i]] = cbind(rep(1, nrow(newdata)), activation_func(s_list[[i-1]]))
+  # }
 
-  s_list = vector("list", length(w) - 1)
-  z_list = vector("list", length(w))
-
-  z_list[[1]] = newdata
-
-  for (i in 2:length(z_list)) {
-    s_list[[i-1]] = get_s(z_list[[i-1]], w[[i-1]])
-    z_list[[i]] = cbind(rep(1, nrow(newdata)), activation_func(s_list[[i-1]]))
-  }
+  z_list = forward_backward_pass(x = newdata, y = NULL, w = w, activation = nn_fit$activation,
+                                 output_type = nn_fit$output_type, dropout = FALSE,
+                                 forward_only = TRUE)$z
 
   if (type == "hidden") return(z_list)
 
