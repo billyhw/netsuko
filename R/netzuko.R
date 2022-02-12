@@ -297,7 +297,7 @@ forward_backward_pass = function(x, y, w, activation, output_type,
 #' mean(pred_4 == mnist$y_train[1001:2000])
 #' }
 #' @export
-predict.netzuko = function(nn_fit, newdata, type = c("prob", "class", "hidden")) {
+predict.netzuko = function(nn_fit, newdata, type = c("prob", "class")) {
 
   # if (is.vector(newdata) | is.null(dim(newdata))) newdata = matrix(newdata, ncol = 1)
 
@@ -336,7 +336,7 @@ predict.netzuko = function(nn_fit, newdata, type = c("prob", "class", "hidden"))
                                  output_type = nn_fit$output_type, dropout = FALSE,
                                  forward_only = TRUE)$z
 
-  if (type == "hidden") return(z_list)
+  # if (type == "hidden") return(z_list)
 
   s = get_s(z_list[[length(z_list)]], w[[length(w)]])
   if (nn_fit$output_type == "categorical") p = soft_max(s)
