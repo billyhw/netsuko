@@ -550,8 +550,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   cost_train[1] = cost_func(fb_train$p, y_train[ind,]) + penalty
 
   if (!is.null(x_test) & !is.null(y_test)) {
-    if (dropout) fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type, forward_only = T)
-    else fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type, forward_only = T)
+    fb_test = forward_backward_pass(x_test, y_test, w, activation, output_type, forward_only = T)
     cost_test[1] = cost_func(fb_test$p, y_test)
   }
 
