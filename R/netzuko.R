@@ -531,11 +531,8 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
 
   num_hidden = c(ncol(x_train)-1, num_hidden, ncol(y_train))
 
-  if (is.null(ini_w)) {
-    w = initialize_weights(x_train, y_train, num_hidden, method = ini_method)
-    ini_w = w
-  }
-  else w = ini_w
+  if (is.null(ini_w)) ini_w = initialize_weights(x_train, y_train, num_hidden, method = ini_method)
+  w = ini_w
 
   if (is.null(batch_size)) batch_size = nrow(x_train)
   if (batch_size > nrow(x_train)) stop("batch_size must be NULL (for non-stochastic gradient descent)
