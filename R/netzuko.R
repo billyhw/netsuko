@@ -174,32 +174,6 @@ initialize_weights = function(x_train, y_train, num_hidden, method) {
   w
 }
 
-#' Initialize weights by Stacking Autoencoders
-#'
-#' @param x_train The training inputs
-#' @param y_train The training outputs
-#' @param num_hidden Vector with number of hidden units for each hidden layer
-#' @param method The initialization method
-#' @return Initial weights
-#' @note For Internal Use
-pretrain = function(x_train, y_train, num_hidden,
-                    iter = 300, step_size = 0.01,
-                    lambda = 1e-5, momentum = 0.9,
-                    ini_method = c("normalized", "uniform", "gaussian"),
-                    sparse = FALSE, verbose = F) {
-  w = initialize_weights(x_train, y_train, num_hidden, ini_method)
-  pred = as.matrix(x_train)
-  for (i in 1:(length(w) - 1)) {
-    if (verbose) message("Pretraining layer ", i)
-    tmp = netzuko(pred, pred, num_hidden = ncol(w[[i]]),
-                  iter = iter, step_size = step_size, lambda = lambda, momentum = momentum,
-                  output = "logistic", activation = "logistic", verbose = verbose)
-    pred = as.matrix(predict(tmp, as.matrix(pred), type = "hidden")[[2]][,-1])
-    w[[i]] = tmp$w[[1]]
-  }
-  w
-}
-
 #' Compute crucial quantities evaluated from one forward-Backward pass through the neural network
 #'
 #' @param x The inputs
@@ -462,7 +436,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
                    iter = 300, activation = c("relu", "tanh", "logistic"), step_size = 0.01, batch_size = 128,
                    lambda = 1e-5, momentum = 0.9, dropout = FALSE, retain_rate = 0.5,
                    adam = FALSE, beta_1 = 0.9, beta_2 = 0.999, epsilon = 1e-8,
-                   ini_w = NULL, ini_method = c("normalized", "uniform", "gaussian", "pretrain"),
+                   ini_w = NULL, ini_method = c("normalized", "uniform", "gaussian"),
                    scale = FALSE, sparse = FALSE, verbose = F, keep_grad = F) {
 
   # if (is.vector(x_train) | is.null(dim(x_train))) x_train = matrix(x_train, ncol = 1)
@@ -558,24 +532,7 @@ netzuko = function(x_train, y_train, x_test = NULL, y_test = NULL, output_type =
   num_hidden = c(ncol(x_train)-1, num_hidden, ncol(y_train))
 
   if (is.null(ini_w)) {
-    if (ini_method == "pretrain") {
-      if (activation != "logistic") {
-      stop("pretraining currently only supports logistic activation,
-           please set activation to logistic and restart")
-      }
-      else if (min(x_train) < 0 | max(x_train > 1)) {
-        stop("pretraining currently only supports inputs with range between (0, 1),
-             please rescale inputs if appropriate")
-      }
-      else {
-        w = pretrain(x_train[,-1], y_train, num_hidden,
-                   iter = iter, step_size = step_size,
-                   lambda = lambda, momentum = momentum,
-                   ini_method = "normalized",
-                   sparse = sparse, verbose = verbose)
-      }
-    }
-    else w = initialize_weights(x_train, y_train, num_hidden, method = ini_method)
+    w = initialize_weights(x_train, y_train, num_hidden, method = ini_method)
     ini_w = w
   }
   else w = ini_w
