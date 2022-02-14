@@ -1,6 +1,6 @@
 # netzuko
 
-<img src="/images/nezuko_2.jpg" width="280" height="350">
+<img src="/images/nezuko_2.jpg" width="300" height="400">
 
 This R package contains a simple implementation of a "textbook" multi-layer neural network.
 
